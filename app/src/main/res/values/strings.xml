@@ -1,0 +1,18 @@
+<resources>
+    <string name="app_name">Sakura</string>
+    <string name="tagline">Encuentra la paz en tu energía interior</string>
+    <string name="bottom_msg">Respira hondo. Tu aura te espera bajo el cerezo.</string>
+    <string name="btn_login">Iniciar Sesión</string>
+    <string name="btn_register">Registrarse</string>
+    <string name="btn_start_journey">Comenzar el viaje</string>
+    <string name="hint_email">Correo</string>
+    <string name="hint_password">Contraseña</string>
+    <string name="hint_spiritual_name">Nombre espiritual</string>
+    <string name="nav_home">Inicio</string>
+    <string name="nav_history">Historial</string>
+    <string name="nav_challenges">Desafíos</string>
+    <string name="nav_profile">Perfil</string>
+    <string name="scan_energy">Iniciar Escaneo de Energía</string>
+    <string name="your_aura_today">Tu Aura de Hoy</string>
+    <string name="cosmic_connection">Conexión Cósmica: Estable</string>
+</resources>
