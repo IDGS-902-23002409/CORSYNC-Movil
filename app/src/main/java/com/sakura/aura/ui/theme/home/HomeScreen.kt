@@ -45,7 +45,7 @@ private data class AuraParticle(
 fun HomeScreen(navController: NavController) {
 
     var isScanning by remember { mutableStateOf(false) }
-    var auraColor  by remember { mutableStateOf(Color(0xFFCCCCCC)) }  // gris neutro inicial
+    var auraColor  by remember { mutableStateOf(Color(0xFFCCCCCC)) }
 
     // Genera partículas aleatorias una sola vez
     val particles = remember {
