@@ -6,7 +6,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -17,23 +17,17 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.sakura.aura.navigation.SakuraBottomNavBar
 import com.sakura.aura.ui.theme.components.SakuraBackground
+import com.sakura.aura.ui.theme.LocalThemeViewModel
+import com.sakura.aura.ui.theme.SakuraPink
 
-// ── Modelos ───────────────────────────────────────────────────────────────────
 data class ChallengeUi(
-    val icon: String,
-    val title: String,
+    val icon: String, val title: String,
     val description: String,
-    val progress: Float,
-    val progressPercent: Int
+    val progress: Float, val progressPercent: Int
 )
 
-data class MedalUi(
-    val icon: String,
-    val label: String,
-    val unlocked: Boolean
-)
+data class MedalUi(val icon: String, val label: String, val unlocked: Boolean)
 
-// ── Datos de muestra ───────────────────────────────────────────────────────────
 private val challenges = listOf(
     ChallengeUi("💨", "Aura Verde de Sanación",
         "Controla tu respiración durante 5 minutos para alcanzar la calma.", 0.80f, 80),
@@ -51,14 +45,25 @@ private val medals = listOf(
     MedalUi("✦", "Cosmos", false),
 )
 
-// ── Pantalla Desafíos ─────────────────────────────────────────────────────────
 @Composable
 fun ChallengesScreen(navController: NavController) {
+
+    val themeViewModel = LocalThemeViewModel.current
+    val isLight by themeViewModel.isLightTheme.collectAsState()
+
+    // ── Colores adaptativos ────────────────────────────────────────────────
+    val textMain  = if (isLight) Color(0xFF1A1A1A) else Color.White
+    val textSub   = if (isLight) Color(0xFF666666) else Color.White.copy(alpha = 0.45f)
+    val cardBg    = if (isLight) Color(0xFFFFFFFF) else Color(0xFF1A1A1A).copy(alpha = 0.85f)
+    val iconBg    = if (isLight) Color(0xFFF0EBF0) else Color(0xFF2A2A2A)
+    val trackColor = if (isLight) Color(0xFFE0D8E0) else Color(0xFF333333)
+    val medalBg   = if (isLight) Color(0xFFEEE8EE) else Color(0xFF2A2A2A)
+    val medalBgOff = if (isLight) Color(0xFFF5F2F5) else Color(0xFF1A1A1A).copy(alpha = 0.5f)
+
     Scaffold(
         containerColor = Color.Transparent,
         bottomBar = { SakuraBottomNavBar(navController) }
     ) { innerPadding ->
-
         SakuraBackground {
             LazyColumn(
                 modifier = Modifier
@@ -67,46 +72,50 @@ fun ChallengesScreen(navController: NavController) {
                     .padding(horizontal = 20.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                item { Spacer(modifier = Modifier.height(12.dp)) }
+                item { Spacer(Modifier.height(12.dp)) }
 
-                // ── Título ─────────────────────────────────────────────────
                 item {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(
-                            text = "Desafíos Interiores",
-                            color = Color.White,
+                            "Desafíos Interiores",
+                            color = textMain,
                             fontSize = 26.sp,
                             fontWeight = FontWeight.Light
                         )
-                        Spacer(modifier = Modifier.height(4.dp))
+                        Spacer(Modifier.height(4.dp))
                         Text(
-                            text = "Misiones diarias hacia la tranquilidad",
-                            color = Color.White.copy(alpha = 0.45f),
+                            "Misiones diarias hacia la tranquilidad",
+                            color = textSub,
                             fontSize = 12.sp
                         )
                     }
                 }
 
-                item { Spacer(modifier = Modifier.height(4.dp)) }
+                item { Spacer(Modifier.height(4.dp)) }
 
-                // ── Cards de desafíos ──────────────────────────────────────
                 items(challenges.size) { i ->
-                    ChallengeCard(challenge = challenges[i])
+                    ChallengeCard(
+                        challenge  = challenges[i],
+                        textMain   = textMain,
+                        textSub    = textSub,
+                        cardBg     = cardBg,
+                        iconBg     = iconBg,
+                        trackColor = trackColor
+                    )
                 }
 
-                // ── Sección Medallas ───────────────────────────────────────
                 item {
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(Modifier.height(8.dp))
                     Text(
-                        text = "Medallas Zen",
-                        color = Color.White,
+                        "Medallas Zen",
+                        color = textMain,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Light
                     )
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(Modifier.height(12.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -114,72 +123,65 @@ fun ChallengesScreen(navController: NavController) {
                         medals.forEach { medal ->
                             MedalBadge(
                                 medal    = medal,
+                                textMain = textMain,
+                                medalBg  = medalBg,
+                                medalBgOff = medalBgOff,
                                 modifier = Modifier.weight(1f)
                             )
                         }
                     }
                 }
 
-                item { Spacer(modifier = Modifier.height(8.dp)) }
+                item { Spacer(Modifier.height(8.dp)) }
             }
         }
     }
 }
 
-// ── Card de desafío ───────────────────────────────────────────────────────────
 @Composable
-private fun ChallengeCard(challenge: ChallengeUi) {
+private fun ChallengeCard(
+    challenge  : ChallengeUi,
+    textMain   : Color,
+    textSub    : Color,
+    cardBg     : Color,
+    iconBg     : Color,
+    trackColor : Color
+) {
     val isComplete = challenge.progress >= 1f
     val progressColor = when {
-        isComplete           -> Color(0xFF2ECC71)
+        isComplete                 -> Color(0xFF2ECC71)
         challenge.progress > 0.6f -> Color(0xFFF39C12)
-        else                 -> Color(0xFF5DADE2)
+        else                       -> Color(0xFF5DADE2)
     }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = Color(0xFF1A1A1A).copy(alpha = 0.85f)
-        )
+        colors = CardDefaults.cardColors(containerColor = cardBg),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                // Ícono
                 Box(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier
                         .size(40.dp)
                         .clip(RoundedCornerShape(10.dp))
-                        .background(Color(0xFF2A2A2A))
+                        .background(iconBg)
                 ) {
-                    Text(text = challenge.icon, fontSize = 18.sp)
+                    Text(challenge.icon, fontSize = 18.sp)
                 }
-
-                Spacer(modifier = Modifier.width(12.dp))
-
+                Spacer(Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = challenge.title,
-                        color = Color.White,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                    Spacer(modifier = Modifier.height(3.dp))
-                    Text(
-                        text = challenge.description,
-                        color = Color.White.copy(alpha = 0.5f),
-                        fontSize = 12.sp,
-                        lineHeight = 17.sp
-                    )
+                    Text(challenge.title, color = textMain, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                    Spacer(Modifier.height(3.dp))
+                    Text(challenge.description, color = textSub, fontSize = 12.sp, lineHeight = 17.sp)
                 }
-
-                // Badge si está completo
                 if (isComplete) {
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(Modifier.width(8.dp))
                     Box(
                         contentAlignment = Alignment.Center,
                         modifier = Modifier
@@ -187,31 +189,24 @@ private fun ChallengeCard(challenge: ChallengeUi) {
                             .clip(CircleShape)
                             .background(Color(0xFF2ECC71).copy(alpha = 0.2f))
                     ) {
-                        Text("✓", color = Color(0xFF2ECC71), fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold)
+                        Text("✓", color = Color(0xFF2ECC71), fontSize = 14.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }
-
-            Spacer(modifier = Modifier.height(14.dp))
-
-            // Barra de progreso
+            Spacer(Modifier.height(14.dp))
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 LinearProgressIndicator(
                     progress = { challenge.progress },
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(4.dp)
-                        .clip(RoundedCornerShape(50.dp)),
-                    color            = progressColor,
-                    trackColor       = Color(0xFF333333),
+                    modifier = Modifier.weight(1f).height(4.dp).clip(RoundedCornerShape(50.dp)),
+                    color      = progressColor,
+                    trackColor = trackColor
                 )
                 Text(
-                    text = "${challenge.progressPercent}%",
-                    color = Color.White.copy(alpha = 0.6f),
+                    "${challenge.progressPercent}%",
+                    color = textSub,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium
                 )
@@ -220,9 +215,14 @@ private fun ChallengeCard(challenge: ChallengeUi) {
     }
 }
 
-// ── Medalla Zen ───────────────────────────────────────────────────────────────
 @Composable
-private fun MedalBadge(medal: MedalUi, modifier: Modifier = Modifier) {
+private fun MedalBadge(
+    medal      : MedalUi,
+    textMain   : Color,
+    medalBg    : Color,
+    medalBgOff : Color,
+    modifier   : Modifier = Modifier
+) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = modifier
@@ -232,23 +232,18 @@ private fun MedalBadge(medal: MedalUi, modifier: Modifier = Modifier) {
             modifier = Modifier
                 .size(52.dp)
                 .clip(CircleShape)
-                .background(
-                    if (medal.unlocked) Color(0xFF2A2A2A)
-                    else Color(0xFF1A1A1A).copy(alpha = 0.5f)
-                )
+                .background(if (medal.unlocked) medalBg else medalBgOff)
         ) {
             Text(
                 text = medal.icon,
                 fontSize = 20.sp,
-                color = if (medal.unlocked) Color(0xFFF4A7C3)
-                else Color.White.copy(alpha = 0.2f)
+                color = if (medal.unlocked) SakuraPink else textMain.copy(alpha = 0.2f)
             )
         }
-        Spacer(modifier = Modifier.height(6.dp))
+        Spacer(Modifier.height(6.dp))
         Text(
             text = medal.label,
-            color = if (medal.unlocked) Color.White.copy(alpha = 0.7f)
-            else Color.White.copy(alpha = 0.25f),
+            color = if (medal.unlocked) textMain.copy(alpha = 0.7f) else textMain.copy(alpha = 0.25f),
             fontSize = 11.sp
         )
     }

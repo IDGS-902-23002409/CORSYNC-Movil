@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.sakura.aura.navigation.SakuraBottomNavBar
 import com.sakura.aura.navigation.SakuraRoutes
+import com.sakura.aura.ui.theme.LocalThemeViewModel
 import com.sakura.aura.ui.theme.components.SakuraBackground
 import com.sakura.aura.ui.theme.SakuraPink
 import com.sakura.aura.utils.ThemeViewModel
@@ -31,8 +32,9 @@ import com.sakura.aura.utils.ThemeViewModel
 @Composable
 fun ProfileScreen(
     navController  : NavController,
-    themeViewModel : ThemeViewModel
+
 ) {
+    val themeViewModel = LocalThemeViewModel.current
     // Observa el estado actual del tema
     val isLight by themeViewModel.isLightTheme.collectAsState()
 

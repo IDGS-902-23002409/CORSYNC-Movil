@@ -25,29 +25,37 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.sakura.aura.navigation.SakuraBottomNavBar
 import com.sakura.aura.ui.theme.components.SakuraBackground
+import com.sakura.aura.ui.theme.LocalThemeViewModel
 import com.sakura.aura.ui.theme.SakuraPink
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
 
-// ── Modelo de partícula del aura ───────────────────────────────────────────────
 private data class AuraParticle(
-    val baseX: Float,
-    val baseY: Float,
+    val baseX: Float, val baseY: Float,
     val radius: Float,
-    val speedX: Float,
-    val speedY: Float,
+    val speedX: Float, val speedY: Float,
     val phase: Float
 )
 
-// ── Pantalla Home ──────────────────────────────────────────────────────────────
 @Composable
 fun HomeScreen(navController: NavController) {
+
+    val themeViewModel = LocalThemeViewModel.current
+    val isLight by themeViewModel.isLightTheme.collectAsState()
+
+    // ── Colores adaptativos ────────────────────────────────────────────────
+    val textMain   = if (isLight) Color(0xFF1A1A1A) else Color.White
+    val textSub    = if (isLight) Color(0xFF555555) else Color.White.copy(alpha = 0.5f)
+    val chipBg     = if (isLight) Color(0xFFFFFFFF) else Color(0xFF1E1E1E).copy(alpha = 0.85f)
+    val chipBorder = if (isLight) Color(0xFFE0D8E0) else Color.White.copy(alpha = 0.15f)
+    val canvasBg   = if (isLight) Color(0xFFFFFFFF) else Color(0xFF181818).copy(alpha = 0.75f)
+    val canvasBorder = if (isLight) Color(0xFFE0D8E0) else Color.White.copy(alpha = 0.08f)
+    val labelColor = if (isLight) Color(0xFF999999) else Color.White.copy(alpha = 0.4f)
 
     var isScanning by remember { mutableStateOf(false) }
     var auraColor  by remember { mutableStateOf(Color(0xFFCCCCCC)) }
 
-    // Genera partículas aleatorias una sola vez
     val particles = remember {
         List(18) {
             AuraParticle(
@@ -61,23 +69,16 @@ fun HomeScreen(navController: NavController) {
         }
     }
 
-    // Animación continua para las partículas
     val infiniteTransition = rememberInfiniteTransition(label = "aura")
     val animTime by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue  = 360f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(6000, easing = LinearEasing)
-        ),
+        initialValue = 0f, targetValue = 360f,
+        animationSpec = infiniteRepeatable(tween(6000, easing = LinearEasing)),
         label = "particles"
     )
-
-    // Pulso del aura al escanear
     val auraPulse by infiniteTransition.animateFloat(
-        initialValue = 0.7f,
-        targetValue  = 1f,
+        initialValue = 0.7f, targetValue = 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(1200, easing = FastOutSlowInEasing),
+            tween(1200, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
         ),
         label = "pulse"
@@ -87,7 +88,6 @@ fun HomeScreen(navController: NavController) {
         containerColor = Color.Transparent,
         bottomBar = { SakuraBottomNavBar(navController) }
     ) { innerPadding ->
-
         SakuraBackground {
             Column(
                 modifier = Modifier
@@ -96,89 +96,93 @@ fun HomeScreen(navController: NavController) {
                     .padding(horizontal = 24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(Modifier.height(24.dp))
 
                 // ── Chip de estado ─────────────────────────────────────────
-                CosmicStatusChip(isScanning = isScanning)
+                CosmicStatusChip(
+                    isScanning  = isScanning,
+                    isLight     = isLight,
+                    chipBg      = chipBg,
+                    chipBorder  = chipBorder,
+                    textMain    = textMain
+                )
 
-                Spacer(modifier = Modifier.height(28.dp))
+                Spacer(Modifier.height(28.dp))
 
-                // ── Título ─────────────────────────────────────────────────
                 Text(
                     text = "Tu Aura de Hoy",
-                    color = Color.White,
+                    color = textMain,
                     fontSize = 28.sp,
                     fontWeight = FontWeight.Light,
                     textAlign = TextAlign.Center
                 )
-
-                Spacer(modifier = Modifier.height(6.dp))
-
+                Spacer(Modifier.height(6.dp))
                 Text(
                     text = "Centra tu respiración y deja fluir la energía",
-                    color = Color.White.copy(alpha = 0.5f),
+                    color = textSub,
                     fontSize = 13.sp,
                     textAlign = TextAlign.Center
                 )
 
-                Spacer(modifier = Modifier.height(32.dp))
+                Spacer(Modifier.height(32.dp))
 
                 // ── Canvas del Aura ────────────────────────────────────────
                 AuraCanvas(
-                    particles   = particles,
-                    animTime    = animTime,
-                    auraPulse   = auraPulse,
-                    isScanning  = isScanning,
-                    auraColor   = auraColor,
-                    modifier    = Modifier
-                        .fillMaxWidth()
-                        .weight(1f)
+                    particles    = particles,
+                    animTime     = animTime,
+                    auraPulse    = auraPulse,
+                    isScanning   = isScanning,
+                    auraColor    = auraColor,
+                    canvasBg     = canvasBg,
+                    canvasBorder = canvasBorder,
+                    labelColor   = labelColor,
+                    modifier     = Modifier.fillMaxWidth().weight(1f)
                 )
 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(Modifier.height(24.dp))
 
                 // ── Botón de escaneo ───────────────────────────────────────
                 ScanButton(
                     isScanning = isScanning,
+                    isLight    = isLight,
                     onClick    = {
                         isScanning = !isScanning
-                        // Simula color al "escanear"
                         if (!isScanning) {
                             auraColor = listOf(
-                                Color(0xFF9B59B6), // Violeta
-                                Color(0xFF5DADE2), // Azul
-                                Color(0xFF2ECC71), // Verde
-                                Color(0xFFE74C3C), // Rojo
+                                Color(0xFF9B59B6),
+                                Color(0xFF5DADE2),
+                                Color(0xFF2ECC71),
+                                Color(0xFFE74C3C),
                             ).random()
                         }
                     }
                 )
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(Modifier.height(16.dp))
             }
         }
     }
 }
 
-// ── Chip "Conexión Cósmica" ────────────────────────────────────────────────────
 @Composable
-private fun CosmicStatusChip(isScanning: Boolean) {
+private fun CosmicStatusChip(
+    isScanning : Boolean,
+    isLight    : Boolean,
+    chipBg     : Color,
+    chipBorder : Color,
+    textMain   : Color
+) {
     val dotColor by animateColorAsState(
-        targetValue  = if (isScanning) Color(0xFF2ECC71) else Color.White,
+        targetValue   = if (isScanning) Color(0xFF2ECC71) else SakuraPink,
         animationSpec = tween(500),
-        label        = "dot"
+        label         = "dot"
     )
-    val label = if (isScanning) "Conexión Cósmica: Activa" else "Conexión Cósmica: Estable"
 
     Surface(
         shape = RoundedCornerShape(50.dp),
-        color = Color(0xFF1E1E1E).copy(alpha = 0.85f),
-        modifier = Modifier.border(
-            width = 0.5.dp,
-            color = Color.White.copy(alpha = 0.15f),
-            shape = RoundedCornerShape(50.dp)
-        )
+        color = chipBg,
+        shadowElevation = if (isLight) 2.dp else 0.dp,
+        modifier = Modifier.border(0.5.dp, chipBorder, RoundedCornerShape(50.dp))
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
@@ -192,60 +196,53 @@ private fun CosmicStatusChip(isScanning: Boolean) {
                     .background(dotColor)
             )
             Text(
-                text  = label,
-                color = Color.White.copy(alpha = 0.85f),
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Normal
+                text = if (isScanning) "Conexión Cósmica: Activa"
+                else "Conexión Cósmica: Estable",
+                color = textMain.copy(alpha = 0.85f),
+                fontSize = 12.sp
             )
         }
     }
 }
 
-// ── Canvas del Aura con partículas ────────────────────────────────────────────
 @Composable
 private fun AuraCanvas(
-    particles:  List<AuraParticle>,
-    animTime:   Float,
-    auraPulse:  Float,
-    isScanning: Boolean,
-    auraColor:  Color,
-    modifier:   Modifier = Modifier
+    particles    : List<AuraParticle>,
+    animTime     : Float,
+    auraPulse    : Float,
+    isScanning   : Boolean,
+    auraColor    : Color,
+    canvasBg     : Color,
+    canvasBorder : Color,
+    labelColor   : Color,
+    modifier     : Modifier = Modifier
 ) {
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(20.dp))
-            .background(Color(0xFF181818).copy(alpha = 0.75f))
-            .border(
-                width = 0.5.dp,
-                color = Color.White.copy(alpha = 0.08f),
-                shape = RoundedCornerShape(20.dp)
-            ),
+            .background(canvasBg)
+            .border(0.5.dp, canvasBorder, RoundedCornerShape(20.dp)),
         contentAlignment = Alignment.Center
     ) {
-        // Etiqueta superior
         Row(
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .padding(14.dp),
+            modifier = Modifier.align(Alignment.TopStart).padding(14.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            Text("〜", color = Color.White.copy(alpha = 0.4f), fontSize = 11.sp)
+            Text("〜", color = labelColor, fontSize = 11.sp)
             Text(
                 text = "LIENZO 3D · UNITY",
-                color = Color.White.copy(alpha = 0.4f),
+                color = labelColor,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Medium,
                 letterSpacing = 1.5.sp
             )
         }
 
-        // Canvas de partículas
         Canvas(modifier = Modifier.fillMaxSize()) {
             val cx = size.width / 2f
             val cy = size.height / 2f
 
-            // Glow central cuando escanea
             if (isScanning) {
                 drawCircle(
                     brush = Brush.radialGradient(
@@ -261,7 +258,6 @@ private fun AuraCanvas(
                 )
             }
 
-            // Partículas orbitando
             particles.forEach { p ->
                 val angle  = Math.toRadians((animTime + p.phase).toDouble())
                 val spread = if (isScanning) 0.38f else 0.28f
@@ -269,19 +265,16 @@ private fun AuraCanvas(
                         sin(angle * 0.7).toFloat() * 20f * p.speedX
                 val y = cy + sin(angle).toFloat() * size.height * spread * p.baseY +
                         cos(angle * 0.5).toFloat() * 20f * p.speedY
-
-                val pColor = if (isScanning) auraColor else Color.White
+                val pColor = if (isScanning) auraColor else Color(0xFF9B59B6)
                 val pAlpha = if (isScanning) 0.7f * auraPulse else 0.55f
-
                 drawParticle(x, y, p.radius, pColor.copy(alpha = pAlpha))
             }
         }
 
-        // Etiqueta central "Aura"
         if (!isScanning) {
             Text(
-                text  = "Aura",
-                color = Color.White.copy(alpha = 0.25f),
+                text = "Aura",
+                color = labelColor.copy(alpha = 0.5f),
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Light,
                 letterSpacing = 3.sp
@@ -290,57 +283,44 @@ private fun AuraCanvas(
     }
 }
 
-// ── Helper: dibuja partícula con glow ─────────────────────────────────────────
 private fun DrawScope.drawParticle(x: Float, y: Float, radius: Float, color: Color) {
-    // Halo exterior
     drawCircle(
         brush = Brush.radialGradient(
             colors = listOf(color.copy(alpha = 0.3f), Color.Transparent),
-            center = Offset(x, y),
-            radius = radius * 3.5f
+            center = Offset(x, y), radius = radius * 3.5f
         ),
-        radius = radius * 3.5f,
-        center = Offset(x, y)
+        radius = radius * 3.5f, center = Offset(x, y)
     )
-    // Punto central
-    drawCircle(
-        color  = color,
-        radius = radius,
-        center = Offset(x, y)
-    )
+    drawCircle(color = color, radius = radius, center = Offset(x, y))
 }
 
-// ── Botón de escaneo ──────────────────────────────────────────────────────────
 @Composable
-private fun ScanButton(isScanning: Boolean, onClick: () -> Unit) {
+private fun ScanButton(isScanning: Boolean, isLight: Boolean, onClick: () -> Unit) {
     val bgColor by animateColorAsState(
-        targetValue  = if (isScanning) Color(0xFF1A1A1A) else Color(0xFFF0F0EC),
-        animationSpec = tween(400),
-        label        = "scanBg"
+        targetValue   = when {
+            isScanning && isLight  -> Color(0xFF1A1A1A)
+            isScanning && !isLight -> Color(0xFF1A1A1A)
+            !isScanning && isLight -> Color(0xFF1A1A1A)
+            else                   -> Color(0xFFF0F0EC)
+        },
+        animationSpec = tween(400), label = "scanBg"
     )
     val textColor by animateColorAsState(
-        targetValue  = if (isScanning) Color.White else Color(0xFF1A1A1A),
-        animationSpec = tween(400),
-        label        = "scanText"
+        targetValue   = if (!isScanning && !isLight) Color(0xFF1A1A1A) else Color.White,
+        animationSpec = tween(400), label = "scanText"
     )
 
     Button(
         onClick = onClick,
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(54.dp),
+        modifier = Modifier.fillMaxWidth().height(54.dp),
         shape = RoundedCornerShape(50.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = bgColor,
             contentColor   = textColor
         )
     ) {
-        Icon(
-            imageVector = Icons.Outlined.AutoAwesome,
-            contentDescription = null,
-            modifier = Modifier.size(18.dp)
-        )
-        Spacer(modifier = Modifier.width(10.dp))
+        Icon(Icons.Outlined.AutoAwesome, null, Modifier.size(18.dp))
+        Spacer(Modifier.width(10.dp))
         Text(
             text = if (isScanning) "Detener Escaneo" else "Iniciar Escaneo de Energía",
             fontWeight = FontWeight.SemiBold,

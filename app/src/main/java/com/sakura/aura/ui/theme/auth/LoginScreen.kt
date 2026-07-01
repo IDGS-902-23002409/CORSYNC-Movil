@@ -56,7 +56,7 @@ fun AuthScreen(
 
             // ── Título ────────────────────────────────────────────────────────
             Text(
-                text = "Sakura",
+                text = "CorSync",
                 style = MaterialTheme.typography.headlineLarge,
                 color = Color.White,
                 fontWeight = FontWeight.Normal,
