@@ -18,6 +18,8 @@ android {
         versionCode = 1
         versionName = "1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        buildConfigField("String", "API_BASE_URL",   "\"https://corsync.runasp.net/\"")
+        buildConfigField("String", "SIGNALR_HUB_URL","\"https://corsync.runasp.net/telemetryHub\"")
     }
 
     buildTypes {
@@ -30,7 +32,10 @@ android {
         }
     }
 
-    buildFeatures { compose = true }
+    buildFeatures {
+        compose = true
+        buildConfig = true
+    }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -41,6 +46,7 @@ android {
 
 dependencies {
     implementation(platform(libs.androidx.compose.bom))
+    implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.ui)
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
@@ -66,4 +72,16 @@ dependencies {
     implementation(libs.datastore.preferences)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.coil.compose)
+
+    // Retrofit (Auth/REST)
+    implementation("com.squareup.retrofit2:retrofit:2.11.0")
+    implementation("com.squareup.retrofit2:converter-gson:2.11.0")
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
+
+    // SignalR (Telemetría en tiempo real)
+    implementation("com.microsoft.signalr:signalr:8.0.0")
+
+    // Token seguro
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
 }

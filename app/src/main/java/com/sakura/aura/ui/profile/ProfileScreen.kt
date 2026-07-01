@@ -1,4 +1,4 @@
-package com.sakura.aura.ui.theme.profile
+package com.sakura.aura.ui.profile
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -25,7 +25,7 @@ import androidx.navigation.NavController
 import com.sakura.aura.navigation.SakuraBottomNavBar
 import com.sakura.aura.navigation.SakuraRoutes
 import com.sakura.aura.ui.theme.LocalThemeViewModel
-import com.sakura.aura.ui.theme.components.SakuraBackground
+import com.sakura.aura.ui.components.SakuraBackground
 import com.sakura.aura.ui.theme.SakuraPink
 import com.sakura.aura.utils.ThemeViewModel
 
@@ -49,7 +49,7 @@ fun ProfileScreen(
         bottomBar = { SakuraBottomNavBar(navController) }
     ) { innerPadding ->
 
-        SakuraBackground(
+        _root_ide_package_.com.sakura.aura.ui.components.SakuraBackground(
             // En tema claro, overlay más suave
             overlayAlpha = if (isLight) 0.15f else 0.62f
         ) {
@@ -158,11 +158,11 @@ fun ProfileScreen(
                                 .padding(vertical = 20.dp),
                             horizontalArrangement = Arrangement.SpaceEvenly
                         ) {
-                            StatItem("72",   "BPM medio", textMain, textSub)
+                            StatItem("72", "BPM medio", textMain, textSub)
                             Box(modifier = Modifier.width(1.dp).height(36.dp).background(divider))
-                            StatItem("Bajo", "Estrés",   textMain, textSub)
+                            StatItem("Bajo", "Estrés", textMain, textSub)
                             Box(modifier = Modifier.width(1.dp).height(36.dp).background(divider))
-                            StatItem("28",   "Sesiones", textMain, textSub)
+                            StatItem("28", "Sesiones", textMain, textSub)
                         }
                     }
                 }
@@ -175,26 +175,26 @@ fun ProfileScreen(
                     ) {
                         // Botón de tema — cambia ícono y texto dinámicamente
                         SettingsRow(
-                            icon     = if (isLight) Icons.Outlined.DarkMode
+                            icon = if (isLight) Icons.Outlined.DarkMode
                             else Icons.Outlined.LightMode,
-                            label    = if (isLight) "Tema Oscuro" else "Tema Claro",
+                            label = if (isLight) "Tema Oscuro" else "Tema Claro",
                             textColor = textMain,
-                            iconBg   = iconBg,
-                            onClick  = { themeViewModel.toggleTheme() }
+                            iconBg = iconBg,
+                            onClick = { themeViewModel.toggleTheme() }
                         )
                         SettingsRow(
-                            icon      = Icons.Outlined.Hardware,
-                            label     = "Ajustes de Hardware",
+                            icon = Icons.Outlined.Hardware,
+                            label = "Ajustes de Hardware",
                             textColor = textMain,
-                            iconBg    = iconBg,
-                            onClick   = {}
+                            iconBg = iconBg,
+                            onClick = {}
                         )
                         SettingsRow(
-                            icon      = Icons.Outlined.AccountCircle,
-                            label     = "Cuenta",
+                            icon = Icons.Outlined.AccountCircle,
+                            label = "Cuenta",
                             textColor = textMain,
-                            iconBg    = iconBg,
-                            onClick   = {}
+                            iconBg = iconBg,
+                            onClick = {}
                         )
                     }
                 }
@@ -216,7 +216,7 @@ fun ProfileScreen(
                         shape = RoundedCornerShape(50.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = Color(0xFF2A1A1A),
-                            contentColor   = Color(0xFFE74C3C)
+                            contentColor = Color(0xFFE74C3C)
                         )
                     ) {
                         Text(

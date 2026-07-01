@@ -1,4 +1,4 @@
-package com.sakura.aura.ui.theme.history
+package com.sakura.aura.ui.history
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -19,7 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.sakura.aura.navigation.SakuraBottomNavBar
-import com.sakura.aura.ui.theme.components.SakuraBackground
+import com.sakura.aura.ui.components.SakuraBackground
 import com.sakura.aura.ui.theme.LocalThemeViewModel
 
 data class AuraReadingUi(
@@ -55,7 +55,7 @@ fun HistoryScreen(navController: NavController) {
         containerColor = Color.Transparent,
         bottomBar = { SakuraBottomNavBar(navController) }
     ) { innerPadding ->
-        SakuraBackground {
+        _root_ide_package_.com.sakura.aura.ui.components.SakuraBackground {
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
@@ -111,11 +111,11 @@ fun HistoryScreen(navController: NavController) {
 
                 items(sampleReadings) { reading ->
                     AuraReadingCard(
-                        reading  = reading,
+                        reading = reading,
                         textMain = textMain,
-                        textSub  = textSub,
-                        cardBg   = cardBg,
-                        onClick  = { selectedReading = reading }
+                        textSub = textSub,
+                        cardBg = cardBg,
+                        onClick = { selectedReading = reading }
                     )
                 }
 

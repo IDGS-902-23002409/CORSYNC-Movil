@@ -1,4 +1,4 @@
-package com.sakura.aura.ui.theme.components
+package com.sakura.aura.ui.components
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background

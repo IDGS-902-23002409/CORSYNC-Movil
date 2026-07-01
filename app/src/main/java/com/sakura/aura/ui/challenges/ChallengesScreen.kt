@@ -1,4 +1,4 @@
-package com.sakura.aura.ui.theme.challenges
+package com.sakura.aura.ui.challenges
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -16,7 +16,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.sakura.aura.navigation.SakuraBottomNavBar
-import com.sakura.aura.ui.theme.components.SakuraBackground
+import com.sakura.aura.ui.components.SakuraBackground
 import com.sakura.aura.ui.theme.LocalThemeViewModel
 import com.sakura.aura.ui.theme.SakuraPink
 
@@ -64,7 +64,7 @@ fun ChallengesScreen(navController: NavController) {
         containerColor = Color.Transparent,
         bottomBar = { SakuraBottomNavBar(navController) }
     ) { innerPadding ->
-        SakuraBackground {
+        _root_ide_package_.com.sakura.aura.ui.components.SakuraBackground {
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
@@ -98,11 +98,11 @@ fun ChallengesScreen(navController: NavController) {
 
                 items(challenges.size) { i ->
                     ChallengeCard(
-                        challenge  = challenges[i],
-                        textMain   = textMain,
-                        textSub    = textSub,
-                        cardBg     = cardBg,
-                        iconBg     = iconBg,
+                        challenge = challenges[i],
+                        textMain = textMain,
+                        textSub = textSub,
+                        cardBg = cardBg,
+                        iconBg = iconBg,
                         trackColor = trackColor
                     )
                 }
@@ -122,9 +122,9 @@ fun ChallengesScreen(navController: NavController) {
                     ) {
                         medals.forEach { medal ->
                             MedalBadge(
-                                medal    = medal,
+                                medal = medal,
                                 textMain = textMain,
-                                medalBg  = medalBg,
+                                medalBg = medalBg,
                                 medalBgOff = medalBgOff,
                                 modifier = Modifier.weight(1f)
                             )
