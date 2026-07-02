@@ -178,8 +178,38 @@ fun HomeScreen(navController: NavController) {
 }
 
 @Composable
-fun ScanButton(isScanning: Boolean, isLight: Boolean, onClick: () -> Unit) {
-    TODO("Not yet implemented")
+private fun ScanButton(isScanning: Boolean, isLight: Boolean, onClick: () -> Unit) {
+    val bgColor by animateColorAsState(
+        targetValue = when {
+            isScanning && isLight  -> Color(0xFF1A1A1A)
+            isScanning && !isLight -> Color(0xFF1A1A1A)
+            !isScanning && isLight -> Color(0xFF1A1A1A)
+            else                   -> Color(0xFFF0F0EC)
+        },
+        animationSpec = tween(400), label = "scanBg"
+    )
+    val textColor by animateColorAsState(
+        targetValue   = if (!isScanning && !isLight) Color(0xFF1A1A1A) else Color.White,
+        animationSpec = tween(400), label = "scanText"
+    )
+
+    Button(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth().height(54.dp),
+        shape = RoundedCornerShape(50.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = bgColor,
+            contentColor   = textColor
+        )
+    ) {
+        Icon(Icons.Outlined.AutoAwesome, null, Modifier.size(18.dp))
+        Spacer(Modifier.width(10.dp))
+        Text(
+            text = if (isScanning) "Detener Escaneo" else "Iniciar Escaneo de Energía",
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 15.sp
+        )
+    }
 }
 
 @Composable
@@ -195,8 +225,18 @@ fun AuraCanvas(
     labelColor: Color,
     modifier: Modifier
 ) {
-    TODO("Not yet implemented")
-}
+    val particles = remember {
+        List(18) {
+            AuraParticle(
+                baseX  = Random.nextFloat(),
+                baseY  = Random.nextFloat(),
+                radius = Random.nextFloat() * 5f + 3f,
+                speedX = (Random.nextFloat() - 0.5f) * 0.3f,
+                speedY = (Random.nextFloat() - 0.5f) * 0.3f,
+                phase  = Random.nextFloat() * 360f
+            )
+        }
+    }}
 
 // ── BPM en tiempo real ────────────────────────────────────────────────────────
 @Composable

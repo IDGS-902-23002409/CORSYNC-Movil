@@ -17,7 +17,6 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
 
-    // ── EncryptedSharedPreferences para guardar el JWT ─────────────────────
     @Provides
     @Singleton
     fun provideEncryptedPrefs(@ApplicationContext context: Context): EncryptedSharedPreferences {
@@ -34,7 +33,6 @@ object NetworkModule {
         ) as EncryptedSharedPreferences
     }
 
-    // ── ApiService con token inyectado ─────────────────────────────────────
     @Provides
     @Singleton
     fun provideApiService(prefs: EncryptedSharedPreferences): ApiService {
@@ -43,7 +41,6 @@ object NetworkModule {
         )
     }
 
-    // ── SignalR Service ────────────────────────────────────────────────────
     @Provides
     @Singleton
     fun provideSignalRService(): SignalRService = SignalRService()

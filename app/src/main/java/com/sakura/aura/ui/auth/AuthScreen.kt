@@ -36,10 +36,16 @@ fun AuthScreen(onLoginSuccess: () -> Unit = {}) {
     val viewModel: AuthViewModel = hiltViewModel()
     val uiState by viewModel.uiState.collectAsState()
     var selectedTab by remember { mutableStateOf(AuthTab.LOGIN) }
+    var registerSuccessMsg by remember { mutableStateOf(false) }
 
     LaunchedEffect(uiState) {
         if (uiState is AuthUiState.Success) {
-            onLoginSuccess()
+            if (selectedTab == AuthTab.LOGIN) {
+                onLoginSuccess()
+            } else {
+                selectedTab = AuthTab.LOGIN
+                registerSuccessMsg = true
+            }
             viewModel.resetState()
         }
     }
@@ -71,9 +77,38 @@ fun AuthScreen(onLoginSuccess: () -> Unit = {}) {
             )
             Spacer(Modifier.height(36.dp))
 
-            AuthTabSelector(selected = selectedTab, onSelect = { selectedTab = it })
+            AuthTabSelector(selected = selectedTab, onSelect = {
+                selectedTab = it
+                registerSuccessMsg = false  // limpia el mensaje al cambiar de tab
+            })
             Spacer(Modifier.height(28.dp))
 
+            // ── Mensaje de registro exitoso ────────────────────────────────────────
+            if (registerSuccessMsg) {
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = Color(0xFF1A3A1A).copy(alpha = 0.85f),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 12.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Text("✓", color = Color(0xFF2ECC71), fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                        Text(
+                            text = "Cuenta creada exitosamente. Inicia sesión para continuar.",
+                            color = Color(0xFF2ECC71),
+                            fontSize = 13.sp,
+                            lineHeight = 18.sp
+                        )
+                    }
+                }
+            }
+
+            // ── Mensaje de error ───────────────────────────────────────────────────
             if (uiState is AuthUiState.Error) {
                 Text(
                     text = (uiState as AuthUiState.Error).message,
