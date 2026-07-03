@@ -1,9 +1,9 @@
 package com.sakura.aura.ui.history
 
 import app.cash.turbine.test
-import com.sakura.aura.data.model.response.ReadingResponse
-import com.sakura.aura.data.model.response.ReadingSummaryResponse
-import com.sakura.aura.domain.repository.ReadingsRepository
+import com.sakura.aura.domain.model.Reading
+import com.sakura.aura.domain.model.ReadingSummary
+import com.sakura.aura.domain.usecase.GetReadingsUseCase
 import io.mockk.*
 import io.mockk.junit4.MockKRule
 import kotlinx.coroutines.Dispatchers
@@ -19,13 +19,13 @@ class HistoryViewModelTest {
     @get:Rule
     val mockkRule = MockKRule(this)
 
-    private val readingsRepository: ReadingsRepository = mockk()
+    private val getReadingsUseCase: GetReadingsUseCase = mockk()
     private lateinit var viewModel: HistoryViewModel
 
     private val mockReadings = listOf(
-        ReadingResponse(1, "ESP32_001", 72.0, 85.0, 60.0, 1200, 1.0, 25.0, "Verde", null, 300, "2026-07-01T20:25:00Z", "2026-07-01T20:30:00Z")
+        Reading(1, "ESP32_001", 72.0, 85.0, 60.0, 1200, 1.0, 25.0, "Verde", null, 300, "2026-07-01T20:25:00Z", "2026-07-01T20:30:00Z")
     )
-    private val mockSummary = ReadingSummaryResponse(72.8, 28.4, 12, "Verde", mapOf("Verde" to 7))
+    private val mockSummary = ReadingSummary(72.8, 28.4, 12, "Verde", mapOf("Verde" to 7))
 
     @Before
     fun setUp() {
@@ -39,23 +39,23 @@ class HistoryViewModelTest {
 
     @Test
     fun `loadData success updates readings and summary`() = runTest {
-        coEvery { readingsRepository.getReadings() } returns Result.success(mockReadings)
-        coEvery { readingsRepository.getSummary() } returns Result.success(mockSummary)
+        coEvery { getReadingsUseCase.getReadings() } returns Result.success(mockReadings)
+        coEvery { getReadingsUseCase.getSummary() } returns Result.success(mockSummary)
 
-        viewModel = HistoryViewModel(readingsRepository)
+        viewModel = HistoryViewModel(getReadingsUseCase)
 
         val state = viewModel.uiState.value
         assertFalse(state.isLoading)
         assertEquals(1, state.readings.size)
-        assertEquals(72.8, state.summary?.bpmPromedioGlobal)
+        assertEquals(72.8, state.summary?.globalAvgBpm)
     }
 
     @Test
     fun `loadData readings failure sets error`() = runTest {
-        coEvery { readingsRepository.getReadings() } returns Result.failure(Exception("Error de red"))
-        coEvery { readingsRepository.getSummary() } returns Result.success(mockSummary)
+        coEvery { getReadingsUseCase.getReadings() } returns Result.failure(Exception("Error de red"))
+        coEvery { getReadingsUseCase.getSummary() } returns Result.success(mockSummary)
 
-        viewModel = HistoryViewModel(readingsRepository)
+        viewModel = HistoryViewModel(getReadingsUseCase)
 
         val state = viewModel.uiState.value
         assertFalse(state.isLoading)
@@ -65,10 +65,10 @@ class HistoryViewModelTest {
 
     @Test
     fun `loadData summary failure doesnt crash`() = runTest {
-        coEvery { readingsRepository.getReadings() } returns Result.success(mockReadings)
-        coEvery { readingsRepository.getSummary() } returns Result.failure(Exception("Summary error"))
+        coEvery { getReadingsUseCase.getReadings() } returns Result.success(mockReadings)
+        coEvery { getReadingsUseCase.getSummary() } returns Result.failure(Exception("Summary error"))
 
-        viewModel = HistoryViewModel(readingsRepository)
+        viewModel = HistoryViewModel(getReadingsUseCase)
 
         val state = viewModel.uiState.value
         assertFalse(state.isLoading)

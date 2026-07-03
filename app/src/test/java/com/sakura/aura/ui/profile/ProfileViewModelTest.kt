@@ -1,11 +1,10 @@
 package com.sakura.aura.ui.profile
 
-import com.sakura.aura.data.model.request.LogoutRequest
-import com.sakura.aura.data.model.response.UserResponse
-import com.sakura.aura.data.model.response.UserStatsResponse
-import com.sakura.aura.data.remote.TokenManager
-import com.sakura.aura.domain.repository.AuthRepository
-import com.sakura.aura.domain.repository.UserRepository
+import com.sakura.aura.domain.model.UserProfile
+import com.sakura.aura.domain.model.UserStats
+import com.sakura.aura.domain.usecase.GetUserProfileUseCase
+import com.sakura.aura.domain.usecase.GetUserStatsUseCase
+import com.sakura.aura.domain.usecase.LogoutUseCase
 import io.mockk.*
 import io.mockk.junit4.MockKRule
 import kotlinx.coroutines.Dispatchers
@@ -20,21 +19,21 @@ class ProfileViewModelTest {
     @get:Rule
     val mockkRule = MockKRule(this)
 
-    private val userRepository: UserRepository = mockk()
-    private val authRepository: AuthRepository = mockk()
-    private val tokenManager: TokenManager = mockk()
+    private val getUserProfileUseCase: GetUserProfileUseCase = mockk()
+    private val getUserStatsUseCase: GetUserStatsUseCase = mockk()
+    private val logoutUseCase: LogoutUseCase = mockk()
     private val testDispatcher = UnconfinedTestDispatcher()
 
-    private val mockUser = UserResponse(
+    private val mockUser = UserProfile(
         id = 1, username = "testuser", email = "t@t.com",
-        nombreCompleto = "Test User", nombreEspiritual = "Luz",
-        signoZodiacal = "Piscis", fotoUrl = null, role = "Cliente",
-        fechaRegistro = "2026-07-01T21:00:00Z"
+        fullName = "Test User", spiritualName = "Luz",
+        zodiacSign = "Piscis", photoUrl = null, role = "Cliente",
+        registrationDate = "2026-07-01T21:00:00Z"
     )
-    private val mockStats = UserStatsResponse(
-        bpmPromedio = 72.5, nivelEstresPromedio = 30.0,
-        sesionesTotales = 10, auraDominante = "Verde",
-        rachaActualDias = 3, ultimaSesion = "2026-07-01T20:30:00Z"
+    private val mockStats = UserStats(
+        avgBpm = 72.5, avgStressLevel = 30.0,
+        totalSessions = 10, dominantAura = "Verde",
+        currentStreakDays = 3, lastSession = "2026-07-01T20:30:00Z"
     )
 
     @Before
@@ -49,23 +48,23 @@ class ProfileViewModelTest {
 
     @Test
     fun `loadProfile success updates user`() {
-        coEvery { userRepository.getProfile() } returns Result.success(mockUser)
-        coEvery { userRepository.getStats() } returns Result.success(mockStats)
+        coEvery { getUserProfileUseCase() } returns Result.success(mockUser)
+        coEvery { getUserStatsUseCase() } returns Result.success(mockStats)
 
-        val viewModel = ProfileViewModel(userRepository, authRepository, tokenManager)
+        val viewModel = ProfileViewModel(getUserProfileUseCase, getUserStatsUseCase, logoutUseCase)
 
         val state = viewModel.uiState.value
         assertFalse(state.isLoading)
         assertEquals("testuser", state.user?.username)
-        assertEquals("Luz", state.user?.nombreEspiritual)
+        assertEquals("Luz", state.user?.spiritualName)
     }
 
     @Test
     fun `loadProfile failure sets error`() {
-        coEvery { userRepository.getProfile() } returns Result.failure(Exception("Error de red"))
-        coEvery { userRepository.getStats() } returns Result.success(mockStats)
+        coEvery { getUserProfileUseCase() } returns Result.failure(Exception("Error de red"))
+        coEvery { getUserStatsUseCase() } returns Result.success(mockStats)
 
-        val viewModel = ProfileViewModel(userRepository, authRepository, tokenManager)
+        val viewModel = ProfileViewModel(getUserProfileUseCase, getUserStatsUseCase, logoutUseCase)
 
         val state = viewModel.uiState.value
         assertFalse(state.isLoading)
@@ -74,30 +73,14 @@ class ProfileViewModelTest {
     }
 
     @Test
-    fun `logout clears tokens`() {
-        coEvery { userRepository.getProfile() } returns Result.success(mockUser)
-        coEvery { userRepository.getStats() } returns Result.success(mockStats)
-        every { tokenManager.getJwtToken() } returns "jwt"
-        every { tokenManager.getRefreshToken() } returns "rt"
-        coEvery { authRepository.logout(LogoutRequest("jwt", "rt")) } returns Result.success(Unit)
+    fun `logout calls logoutUseCase`() {
+        coEvery { getUserProfileUseCase() } returns Result.success(mockUser)
+        coEvery { getUserStatsUseCase() } returns Result.success(mockStats)
+        coEvery { logoutUseCase() } returns Result.success(Unit)
 
-        val viewModel = ProfileViewModel(userRepository, authRepository, tokenManager)
+        val viewModel = ProfileViewModel(getUserProfileUseCase, getUserStatsUseCase, logoutUseCase)
         viewModel.logout()
 
-        coVerify { authRepository.logout(LogoutRequest("jwt", "rt")) }
-    }
-
-    @Test
-    fun `logout without tokens clears all`() {
-        coEvery { userRepository.getProfile() } returns Result.success(mockUser)
-        coEvery { userRepository.getStats() } returns Result.success(mockStats)
-        every { tokenManager.getJwtToken() } returns null
-        every { tokenManager.getRefreshToken() } returns null
-        every { tokenManager.clearAll() } just Runs
-
-        val viewModel = ProfileViewModel(userRepository, authRepository, tokenManager)
-        viewModel.logout()
-
-        verify { tokenManager.clearAll() }
+        coVerify { logoutUseCase() }
     }
 }

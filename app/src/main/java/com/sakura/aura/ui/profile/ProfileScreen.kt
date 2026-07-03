@@ -27,10 +27,7 @@ import com.sakura.aura.navigation.SakuraBottomNavBar
 import com.sakura.aura.navigation.SakuraRoutes
 import com.sakura.aura.ui.components.SakuraBackground
 import com.sakura.aura.ui.theme.LocalThemeViewModel
-import com.sakura.aura.domain.model.UserProfile
-import com.sakura.aura.domain.model.UserStats
 import com.sakura.aura.ui.theme.SakuraPink
-import com.sakura.aura.utils.ThemeViewModel
 
 @Composable
 fun ProfileScreen(

@@ -18,7 +18,6 @@ import retrofit2.http.*
 
 interface ApiService {
 
-    // ── Auth ───────────────────────────────────────────────────────────────
     @POST(ApiEndpoints.AUTH_REGISTER)
     suspend fun register(
         @Body request: RegisterRequest
@@ -39,7 +38,6 @@ interface ApiService {
         @Body request: RefreshTokenRequest
     ): Response<AuthResponse>
 
-    // ── User ───────────────────────────────────────────────────────────────
     @GET(ApiEndpoints.USER_PROFILE)
     suspend fun getProfile(): Response<UserResponse>
 
@@ -51,7 +49,6 @@ interface ApiService {
     @GET(ApiEndpoints.USER_STATS)
     suspend fun getUserStats(): Response<UserStatsResponse>
 
-    // ── Readings ───────────────────────────────────────────────────────────
     @GET(ApiEndpoints.READINGS)
     suspend fun getReadings(
         @Query("page") page: Int = 1,
@@ -66,7 +63,6 @@ interface ApiService {
     @GET(ApiEndpoints.READINGS_SUMMARY)
     suspend fun getReadingsSummary(): Response<ReadingSummaryResponse>
 
-    // ── Challenges ─────────────────────────────────────────────────────────
     @GET(ApiEndpoints.CHALLENGES)
     suspend fun getChallenges(): Response<List<ChallengeResponse>>
 

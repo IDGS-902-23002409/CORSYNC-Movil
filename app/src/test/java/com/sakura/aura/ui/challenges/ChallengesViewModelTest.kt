@@ -1,8 +1,8 @@
 package com.sakura.aura.ui.challenges
 
-import com.sakura.aura.data.model.response.ChallengeResponse
-import com.sakura.aura.data.model.response.MedalResponse
-import com.sakura.aura.domain.repository.ChallengesRepository
+import com.sakura.aura.domain.model.Challenge
+import com.sakura.aura.domain.model.Medal
+import com.sakura.aura.domain.usecase.GetChallengesUseCase
 import io.mockk.*
 import io.mockk.junit4.MockKRule
 import kotlinx.coroutines.Dispatchers
@@ -17,14 +17,14 @@ class ChallengesViewModelTest {
     @get:Rule
     val mockkRule = MockKRule(this)
 
-    private val challengesRepository: ChallengesRepository = mockk()
+    private val getChallengesUseCase: GetChallengesUseCase = mockk()
     private lateinit var viewModel: ChallengesViewModel
 
     private val mockChallenges = listOf(
-        ChallengeResponse(1, "Primera Lectura", "Desc", null, "Sesiones", 1, "sesiones", 10, 1, true, 100.0, "2026-06-30T10:15:00Z")
+        Challenge(1, "Primera Lectura", "Desc", null, "Sesiones", 1, "sesiones", 10, 1, true, 100.0, "2026-06-30T10:15:00Z")
     )
     private val mockMedals = listOf(
-        MedalResponse(1, "Primer Escaneo", null, null, "2026-06-30T10:15:00Z")
+        Medal(1, "Primer Escaneo", null, null, "2026-06-30T10:15:00Z")
     )
 
     @Before
@@ -39,24 +39,24 @@ class ChallengesViewModelTest {
 
     @Test
     fun `loadData success updates challenges and medals`() = runTest {
-        coEvery { challengesRepository.getChallenges() } returns Result.success(mockChallenges)
-        coEvery { challengesRepository.getMedals() } returns Result.success(mockMedals)
+        coEvery { getChallengesUseCase.getChallenges() } returns Result.success(mockChallenges)
+        coEvery { getChallengesUseCase.getMedals() } returns Result.success(mockMedals)
 
-        viewModel = ChallengesViewModel(challengesRepository)
+        viewModel = ChallengesViewModel(getChallengesUseCase)
 
         val state = viewModel.uiState.value
         assertFalse(state.isLoading)
         assertEquals(1, state.challenges.size)
         assertEquals(1, state.medals.size)
-        assertEquals("Primera Lectura", state.challenges.first().titulo)
+        assertEquals("Primera Lectura", state.challenges.first().title)
     }
 
     @Test
     fun `loadData challenges failure sets error`() = runTest {
-        coEvery { challengesRepository.getChallenges() } returns Result.failure(Exception("Error al obtener desaf\u00edos"))
-        coEvery { challengesRepository.getMedals() } returns Result.success(mockMedals)
+        coEvery { getChallengesUseCase.getChallenges() } returns Result.failure(Exception("Error al obtener desaf\u00edos"))
+        coEvery { getChallengesUseCase.getMedals() } returns Result.success(mockMedals)
 
-        viewModel = ChallengesViewModel(challengesRepository)
+        viewModel = ChallengesViewModel(getChallengesUseCase)
 
         val state = viewModel.uiState.value
         assertFalse(state.isLoading)
@@ -66,10 +66,10 @@ class ChallengesViewModelTest {
 
     @Test
     fun `loadData medals failure doesnt crash`() = runTest {
-        coEvery { challengesRepository.getChallenges() } returns Result.success(mockChallenges)
-        coEvery { challengesRepository.getMedals() } returns Result.failure(Exception("Medals error"))
+        coEvery { getChallengesUseCase.getChallenges() } returns Result.success(mockChallenges)
+        coEvery { getChallengesUseCase.getMedals() } returns Result.failure(Exception("Medals error"))
 
-        viewModel = ChallengesViewModel(challengesRepository)
+        viewModel = ChallengesViewModel(getChallengesUseCase)
 
         val state = viewModel.uiState.value
         assertFalse(state.isLoading)

@@ -1,8 +1,7 @@
 package com.sakura.aura.ui.home
 
-import app.cash.turbine.test
-import com.sakura.aura.data.remote.SignalRService
-import com.sakura.aura.data.remote.TokenManager
+import com.sakura.aura.domain.model.Telemetry
+import com.sakura.aura.domain.usecase.ScanAuraUseCase
 import io.mockk.*
 import io.mockk.junit4.MockKRule
 import kotlinx.coroutines.Dispatchers
@@ -11,7 +10,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.*
 import org.junit.*
 import org.junit.Assert.*
-import kotlin.time.Duration.Companion.seconds
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class HomeViewModelTest {
@@ -19,23 +17,22 @@ class HomeViewModelTest {
     @get:Rule
     val mockkRule = MockKRule(this)
 
-    private val signalRService: SignalRService = mockk()
-    private val tokenManager: TokenManager = mockk()
+    private val scanAuraUseCase: ScanAuraUseCase = mockk()
     private lateinit var viewModel: HomeViewModel
 
     private val _isConnected = MutableStateFlow(false)
-    private val _telemetry = MutableStateFlow<com.sakura.aura.data.model.response.TelemetryResponse?>(null)
+    private val _telemetry = MutableStateFlow<Telemetry?>(null)
     private val _error = MutableStateFlow<String?>(null)
 
     @Before
     fun setUp() {
         Dispatchers.setMain(UnconfinedTestDispatcher())
 
-        every { signalRService.isConnected } returns _isConnected
-        every { signalRService.telemetry } returns _telemetry
-        every { signalRService.error } returns _error
+        every { scanAuraUseCase.isConnected } returns _isConnected
+        every { scanAuraUseCase.telemetry } returns _telemetry
+        every { scanAuraUseCase.error } returns _error
 
-        viewModel = HomeViewModel(signalRService, tokenManager)
+        viewModel = HomeViewModel(scanAuraUseCase)
     }
 
     @After
@@ -55,44 +52,33 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun `connect with no token sets error`() {
-        every { tokenManager.getJwtToken() } returns null
+    fun `connect calls useCase connect`() = runTest {
+        coEvery { scanAuraUseCase.connect() } just Runs
 
         viewModel.connect()
 
-        assertEquals("No hay sesi\u00f3n activa", viewModel.uiState.value.error)
-    }
-
-    @Test
-    fun `connect with token calls signalR`() = runTest {
-        every { tokenManager.getJwtToken() } returns "test_jwt"
-        coEvery { signalRService.connect("test_jwt") } just Runs
-
-        viewModel.connect()
-
-        coVerify { signalRService.connect("test_jwt") }
+        coVerify { scanAuraUseCase.connect() }
     }
 
     @Test
     fun `startScan updates isScanning`() = runTest {
-        every { tokenManager.getJwtToken() } returns "test_jwt"
-        coEvery { signalRService.connect("test_jwt") } just Runs
-        every { signalRService.startMeasurement() } just Runs
+        coEvery { scanAuraUseCase.connect() } just Runs
+        every { scanAuraUseCase.startScan() } just Runs
 
         viewModel.startScan()
 
         assertTrue(viewModel.uiState.value.isScanning)
-        verify { signalRService.startMeasurement() }
+        verify { scanAuraUseCase.startScan() }
     }
 
     @Test
     fun `stopScan updates isScanning to false`() = runTest {
-        every { signalRService.stopMeasurement() } just Runs
+        every { scanAuraUseCase.stopScan() } just Runs
 
         viewModel.stopScan()
 
         assertFalse(viewModel.uiState.value.isScanning)
-        verify { signalRService.stopMeasurement() }
+        verify { scanAuraUseCase.stopScan() }
     }
 
     @Test
