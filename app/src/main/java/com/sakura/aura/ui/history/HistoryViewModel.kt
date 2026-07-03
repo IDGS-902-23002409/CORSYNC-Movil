@@ -2,9 +2,9 @@ package com.sakura.aura.ui.history
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.sakura.aura.data.model.response.ReadingResponse
-import com.sakura.aura.data.model.response.ReadingSummaryResponse
-import com.sakura.aura.domain.repository.ReadingsRepository
+import com.sakura.aura.domain.model.Reading
+import com.sakura.aura.domain.model.ReadingSummary
+import com.sakura.aura.domain.usecase.GetReadingsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -15,14 +15,14 @@ import javax.inject.Inject
 
 data class HistoryUiState(
     val isLoading: Boolean = true,
-    val readings: List<ReadingResponse> = emptyList(),
-    val summary: ReadingSummaryResponse? = null,
+    val readings: List<Reading> = emptyList(),
+    val summary: ReadingSummary? = null,
     val error: String? = null
 )
 
 @HiltViewModel
 class HistoryViewModel @Inject constructor(
-    private val readingsRepository: ReadingsRepository
+    private val getReadingsUseCase: GetReadingsUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HistoryUiState())
@@ -35,7 +35,7 @@ class HistoryViewModel @Inject constructor(
     fun loadData() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
-            readingsRepository.getReadings().fold(
+            getReadingsUseCase.getReadings().fold(
                 onSuccess = { readings ->
                     _uiState.update { it.copy(isLoading = false, readings = readings) }
                 },
@@ -45,7 +45,7 @@ class HistoryViewModel @Inject constructor(
             )
         }
         viewModelScope.launch {
-            readingsRepository.getSummary().fold(
+            getReadingsUseCase.getSummary().fold(
                 onSuccess = { summary ->
                     _uiState.update { it.copy(summary = summary) }
                 },

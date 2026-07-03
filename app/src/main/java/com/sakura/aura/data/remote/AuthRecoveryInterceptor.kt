@@ -16,7 +16,7 @@ class AuthRecoveryInterceptor : Interceptor {
             return chain.proceed(request)
         } catch (e: SocketException) {
             // Verificar si el error ocurrió específicamente en el POST de register
-            if (request.method == "POST" && url.endsWith("api/Auth/register")) {
+            if (request.method == "POST" && url.endsWith(ApiEndpoints.AUTH_REGISTER)) {
 
                 // Extraer los datos del cuerpo original para armar el Login
                 val buffer = okio.Buffer()
@@ -37,7 +37,7 @@ class AuthRecoveryInterceptor : Interceptor {
                 val loginBody = loginJson.toRequestBody(mediaType)
 
                 // Reconstruir la URL mutándola hacia el endpoint de Login
-                val loginUrl = url.replace("api/Auth/register", "api/Auth/login")
+                val loginUrl = url.replace(ApiEndpoints.AUTH_REGISTER, ApiEndpoints.AUTH_LOGIN)
 
                 val loginRequest = request.newBuilder()
                     .url(loginUrl)

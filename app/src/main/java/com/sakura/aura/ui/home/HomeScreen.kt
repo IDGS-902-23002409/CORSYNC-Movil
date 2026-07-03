@@ -126,7 +126,7 @@ fun HomeScreen(navController: NavController) {
                 if (uiState.isScanning && uiState.telemetry != null) {
                     Spacer(Modifier.height(12.dp))
                     BpmDisplay(
-                        bpm        = uiState.telemetry!!.bpmPromedio,
+                        bpm        = uiState.telemetry!!.avgBpm,
                         auraLabel  = uiState.auraColor.label,
                         auraColor  = auraColor
                     )

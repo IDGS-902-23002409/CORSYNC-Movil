@@ -1,9 +1,9 @@
 package com.sakura.aura.domain.repository
 
-import com.sakura.aura.data.model.response.ChallengeResponse
-import com.sakura.aura.data.model.response.MedalResponse
+import com.sakura.aura.domain.model.Challenge
+import com.sakura.aura.domain.model.Medal
 
 interface ChallengesRepository {
-    suspend fun getChallenges(): Result<List<ChallengeResponse>>
-    suspend fun getMedals(): Result<List<MedalResponse>>
+    suspend fun getChallenges(): Result<List<Challenge>>
+    suspend fun getMedals(): Result<List<Medal>>
 }

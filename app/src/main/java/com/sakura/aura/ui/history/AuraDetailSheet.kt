@@ -18,32 +18,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.sakura.aura.data.model.response.ReadingResponse
-
-private fun auraColorFromString(color: String): Color = when (color.lowercase()) {
-    "rojo", "roja" -> Color(0xFFE74C3C)
-    "naranja" -> Color(0xFFE67E22)
-    "amarillo", "amarilla" -> Color(0xFFF1C40F)
-    "verde" -> Color(0xFF2ECC71)
-    "azul" -> Color(0xFF5DADE2)
-    "morado", "violeta", "morada" -> Color(0xFF9B59B6)
-    "rosa" -> Color(0xFFE91E8C)
-    else -> Color(0xFFCCCCCC)
-}
-
-private fun stressLabel(level: Double): String = when {
-    level < 30 -> "Bajo"
-    level < 60 -> "Medio"
-    else -> "Alto"
-}
+import com.sakura.aura.domain.model.Reading
+import com.sakura.aura.domain.util.AuraMapper
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AuraDetailSheet(
-    reading: ReadingResponse,
+    reading: Reading,
     onDismiss: () -> Unit
 ) {
-    val auraColor = auraColorFromString(reading.auraDominante)
+    val auraColor = AuraMapper.auraColorFromString(reading.dominantAura)
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -69,7 +53,7 @@ fun AuraDetailSheet(
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = reading.fechaInicio.take(10),
+                        text = reading.startDate.take(10),
                         color = Color(0xFF888888),
                         fontSize = 12.sp
                     )
@@ -90,11 +74,11 @@ fun AuraDetailSheet(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 SheetMetricBadge(
-                    value = "${reading.bpmPromedio.toInt()} bpm",
+                    value = "${reading.avgBpm.toInt()} bpm",
                     modifier = Modifier.weight(1f)
                 )
                 SheetMetricBadge(
-                    value = "${stressLabel(reading.nivelEstres)} · ${reading.nivelEstres.toInt()}%",
+                    value = "${AuraMapper.stressLabel(reading.stressLevel)} · ${reading.stressLevel.toInt()}%",
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -117,7 +101,7 @@ fun AuraDetailSheet(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            OracleMessage(auraName = reading.auraDominante)
+            OracleMessage(auraName = reading.dominantAura)
 
             Spacer(modifier = Modifier.height(24.dp))
         }

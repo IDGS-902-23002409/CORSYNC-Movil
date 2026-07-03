@@ -2,9 +2,9 @@ package com.sakura.aura.ui.challenges
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.sakura.aura.data.model.response.ChallengeResponse
-import com.sakura.aura.data.model.response.MedalResponse
-import com.sakura.aura.domain.repository.ChallengesRepository
+import com.sakura.aura.domain.model.Challenge
+import com.sakura.aura.domain.model.Medal
+import com.sakura.aura.domain.usecase.GetChallengesUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -15,14 +15,14 @@ import javax.inject.Inject
 
 data class ChallengesUiState(
     val isLoading: Boolean = true,
-    val challenges: List<ChallengeResponse> = emptyList(),
-    val medals: List<MedalResponse> = emptyList(),
+    val challenges: List<Challenge> = emptyList(),
+    val medals: List<Medal> = emptyList(),
     val error: String? = null
 )
 
 @HiltViewModel
 class ChallengesViewModel @Inject constructor(
-    private val challengesRepository: ChallengesRepository
+    private val getChallengesUseCase: GetChallengesUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ChallengesUiState())
@@ -35,7 +35,7 @@ class ChallengesViewModel @Inject constructor(
     fun loadData() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
-            challengesRepository.getChallenges().fold(
+            getChallengesUseCase.getChallenges().fold(
                 onSuccess = { challenges ->
                     _uiState.update { it.copy(isLoading = false, challenges = challenges) }
                 },
@@ -45,7 +45,7 @@ class ChallengesViewModel @Inject constructor(
             )
         }
         viewModelScope.launch {
-            challengesRepository.getMedals().fold(
+            getChallengesUseCase.getMedals().fold(
                 onSuccess = { medals ->
                     _uiState.update { it.copy(medals = medals) }
                 },

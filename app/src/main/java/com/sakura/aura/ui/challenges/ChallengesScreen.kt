@@ -16,8 +16,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
-import com.sakura.aura.data.model.response.ChallengeResponse
-import com.sakura.aura.data.model.response.MedalResponse
+import com.sakura.aura.domain.model.Challenge
+import com.sakura.aura.domain.model.Medal
 import com.sakura.aura.navigation.SakuraBottomNavBar
 import com.sakura.aura.ui.components.SakuraBackground
 import com.sakura.aura.ui.theme.LocalThemeViewModel
@@ -149,16 +149,16 @@ fun ChallengesScreen(navController: NavController) {
 
 @Composable
 private fun ChallengeCard(
-    challenge  : ChallengeResponse,
+    challenge  : Challenge,
     textMain   : Color,
     textSub    : Color,
     cardBg     : Color,
     iconBg     : Color,
     trackColor : Color
 ) {
-    val progress = (challenge.progresoActual.toFloat() / challenge.metaObjetivo.toFloat()).coerceIn(0f, 1f)
+    val progress = (challenge.currentProgress.toFloat() / challenge.targetGoal.toFloat()).coerceIn(0f, 1f)
     val progressPercent = (progress * 100).toInt()
-    val isComplete = challenge.completado
+    val isComplete = challenge.completed
     val progressColor = when {
         isComplete                 -> Color(0xFF2ECC71)
         progress > 0.6f -> Color(0xFFF39C12)
@@ -183,13 +183,13 @@ private fun ChallengeCard(
                         .clip(RoundedCornerShape(10.dp))
                         .background(iconBg)
                 ) {
-                    Text(challenge.icono ?: "✦", fontSize = 18.sp)
+                    Text(challenge.icon ?: "✦", fontSize = 18.sp)
                 }
                 Spacer(Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(challenge.titulo, color = textMain, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                    Text(challenge.title, color = textMain, fontSize = 14.sp, fontWeight = FontWeight.Medium)
                     Spacer(Modifier.height(3.dp))
-                    Text(challenge.descripcion, color = textSub, fontSize = 12.sp, lineHeight = 17.sp)
+                    Text(challenge.description, color = textSub, fontSize = 12.sp, lineHeight = 17.sp)
                 }
                 if (isComplete) {
                     Spacer(Modifier.width(8.dp))
@@ -228,13 +228,13 @@ private fun ChallengeCard(
 
 @Composable
 private fun MedalBadge(
-    medal      : MedalResponse,
+    medal      : Medal,
     textMain   : Color,
     medalBg    : Color,
     medalBgOff : Color,
     modifier   : Modifier = Modifier
 ) {
-    val unlocked = medal.fechaObtenida != null
+    val unlocked = medal.obtainedDate != null
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -248,14 +248,14 @@ private fun MedalBadge(
                 .background(if (unlocked) medalBg else medalBgOff)
         ) {
             Text(
-                text = medal.icono ?: "✦",
+                text = medal.icon ?: "✦",
                 fontSize = 20.sp,
                 color = if (unlocked) SakuraPink else textMain.copy(alpha = 0.2f)
             )
         }
         Spacer(Modifier.height(6.dp))
         Text(
-            text = medal.nombre,
+            text = medal.name,
             color = if (unlocked) textMain.copy(alpha = 0.7f) else textMain.copy(alpha = 0.25f),
             fontSize = 11.sp
         )

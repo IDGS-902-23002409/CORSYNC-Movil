@@ -27,6 +27,8 @@ import com.sakura.aura.navigation.SakuraBottomNavBar
 import com.sakura.aura.navigation.SakuraRoutes
 import com.sakura.aura.ui.components.SakuraBackground
 import com.sakura.aura.ui.theme.LocalThemeViewModel
+import com.sakura.aura.domain.model.UserProfile
+import com.sakura.aura.domain.model.UserStats
 import com.sakura.aura.ui.theme.SakuraPink
 import com.sakura.aura.utils.ThemeViewModel
 
@@ -89,7 +91,7 @@ fun ProfileScreen(
                             }
                             Spacer(modifier = Modifier.height(14.dp))
                             Text(
-                                text = uiState.user?.nombreCompleto ?: "Usuario",
+                                text = uiState.user?.fullName ?: "Usuario",
                                 color = textMain,
                                 fontSize = 22.sp,
                                 fontWeight = FontWeight.Light
@@ -101,8 +103,8 @@ fun ProfileScreen(
                             ) {
                                 Text("✦", color = SakuraPink, fontSize = 12.sp)
                                 Text(
-                                    text = uiState.user?.nombreEspiritual
-                                        ?: uiState.user?.signoZodiacal
+                                    text = uiState.user?.spiritualName
+                                        ?: uiState.user?.zodiacSign
                                         ?: "Buscador espiritual",
                                     color = textSub,
                                     fontSize = 13.sp
@@ -141,7 +143,7 @@ fun ProfileScreen(
                                         )
                                         Spacer(modifier = Modifier.height(4.dp))
                                         Text(
-                                            text = uiState.stats?.auraDominante ?: "Descubriendo...",
+                                            text = uiState.stats?.dominantAura ?: "Descubriendo...",
                                             color = textMain,
                                             fontSize = 18.sp,
                                             fontWeight = FontWeight.Light
@@ -165,13 +167,13 @@ fun ProfileScreen(
                                 horizontalArrangement = Arrangement.SpaceEvenly
                             ) {
                                 StatItem(
-                                    value = uiState.stats?.bpmPromedio?.toInt()?.toString() ?: "--",
+                                    value = uiState.stats?.avgBpm?.toInt()?.toString() ?: "--",
                                     label = "BPM medio",
                                     textMain, textSub
                                 )
                                 Box(modifier = Modifier.width(1.dp).height(36.dp).background(divider))
                                 StatItem(
-                                    value = uiState.stats?.nivelEstresPromedio?.let {
+                                    value = uiState.stats?.avgStressLevel?.let {
                                         when {
                                             it < 30 -> "Bajo"
                                             it < 60 -> "Medio"
@@ -183,7 +185,7 @@ fun ProfileScreen(
                                 )
                                 Box(modifier = Modifier.width(1.dp).height(36.dp).background(divider))
                                 StatItem(
-                                    value = uiState.stats?.sesionesTotales?.toString() ?: "--",
+                                    value = uiState.stats?.totalSessions?.toString() ?: "--",
                                     label = "Sesiones",
                                     textMain, textSub
                                 )

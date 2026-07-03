@@ -1,13 +1,16 @@
 package com.sakura.aura.data.repository
 
 import android.util.Log
-import com.sakura.aura.data.model.request.LoginRequest
+import com.sakura.aura.data.mapper.toDomain
+import com.sakura.aura.data.mapper.toLoginRequest
+import com.sakura.aura.data.mapper.toRefreshRequest
+import com.sakura.aura.data.mapper.toRegisterRequest
 import com.sakura.aura.data.model.request.LogoutRequest
-import com.sakura.aura.data.model.request.RefreshTokenRequest
-import com.sakura.aura.data.model.request.RegisterRequest
-import com.sakura.aura.data.model.response.AuthResponse
 import com.sakura.aura.data.remote.ApiService
 import com.sakura.aura.data.remote.TokenManager
+import com.sakura.aura.domain.model.AuthToken
+import com.sakura.aura.domain.model.LoginCredentials
+import com.sakura.aura.domain.model.RegistrationData
 import com.sakura.aura.domain.repository.AuthRepository
 import java.io.IOException
 import java.net.SocketException
@@ -20,12 +23,11 @@ class AuthRepositoryImpl @Inject constructor(
     private val tokenManager: TokenManager
 ) : AuthRepository {
 
-    override suspend fun register(request: RegisterRequest): Result<AuthResponse> {
+    override suspend fun register(data: RegistrationData): Result<AuthToken> {
         return try {
-            val response = apiService.register(request)
-
+            val response = apiService.register(data.toRegisterRequest())
             if (response.isSuccessful && response.body() != null) {
-                val auth = response.body()!!
+                val auth = response.body()!!.toDomain()
                 tokenManager.saveTokens(auth.token, auth.refreshToken)
                 Result.success(auth)
             } else {
@@ -34,41 +36,34 @@ class AuthRepositoryImpl @Inject constructor(
             }
         } catch (e: Exception) {
             val errorMessage = e.message ?: ""
-
             if (e is SocketException || e is IOException || errorMessage.contains("reset", ignoreCase = true)) {
                 Log.w("AuthRepository", "Fallo de conexión detectado (posible reset). Intentando Login de rescate...")
-
-                try {
-                    val loginRequest = LoginRequest(
-                        username = request.username,
-                        password = request.password
+                return try {
+                    val loginResponse = apiService.login(
+                        LoginCredentials(data.username, data.password).toLoginRequest()
                     )
-
-                    val loginResponse = apiService.login(loginRequest)
-
                     if (loginResponse.isSuccessful && loginResponse.body() != null) {
-                        val auth = loginResponse.body()!!
+                        val auth = loginResponse.body()!!.toDomain()
                         tokenManager.saveTokens(auth.token, auth.refreshToken)
                         Log.i("AuthRepository", "¡Login de rescate exitoso tras caída de registro!")
-                        return Result.success(auth)
+                        Result.success(auth)
                     } else {
                         val loginError = loginResponse.errorBody()?.string() ?: "Error en login"
-                        return Result.failure(Exception("El registro falló por red y el login de rescate no tuvo éxito: $loginError"))
+                        Result.failure(Exception("El registro falló por red y el login de rescate no tuvo éxito: $loginError"))
                     }
                 } catch (loginException: Exception) {
-                    return Result.failure(loginException)
+                    Result.failure(loginException)
                 }
             }
-
             Result.failure(e)
         }
     }
 
-    override suspend fun login(request: LoginRequest): Result<AuthResponse> {
+    override suspend fun login(credentials: LoginCredentials): Result<AuthToken> {
         return try {
-            val response = apiService.login(request)
+            val response = apiService.login(credentials.toLoginRequest())
             if (response.isSuccessful && response.body() != null) {
-                val auth = response.body()!!
+                val auth = response.body()!!.toDomain()
                 tokenManager.saveTokens(auth.token, auth.refreshToken)
                 Result.success(auth)
             } else {
@@ -80,9 +75,9 @@ class AuthRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun logout(request: LogoutRequest): Result<Unit> {
+    override suspend fun logout(jwtToken: String, refreshToken: String): Result<Unit> {
         return try {
-            val response = apiService.logout(request)
+            val response = apiService.logout(LogoutRequest(jwtToken, refreshToken))
             tokenManager.clearTokens()
             if (response.isSuccessful) {
                 Result.success(Unit)
@@ -95,11 +90,11 @@ class AuthRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun refreshToken(request: RefreshTokenRequest): Result<AuthResponse> {
+    override suspend fun refreshToken(token: AuthToken): Result<AuthToken> {
         return try {
-            val response = apiService.refreshToken(request)
+            val response = apiService.refreshToken(token.toRefreshRequest())
             if (response.isSuccessful && response.body() != null) {
-                val auth = response.body()!!
+                val auth = response.body()!!.toDomain()
                 tokenManager.saveTokens(auth.token, auth.refreshToken)
                 Result.success(auth)
             } else {

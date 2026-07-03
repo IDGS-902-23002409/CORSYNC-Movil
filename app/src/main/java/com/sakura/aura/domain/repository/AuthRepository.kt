@@ -1,18 +1,12 @@
 package com.sakura.aura.domain.repository
 
-import com.sakura.aura.data.model.request.LoginRequest
-import com.sakura.aura.data.model.request.LogoutRequest
-import com.sakura.aura.data.model.request.RefreshTokenRequest
-import com.sakura.aura.data.model.request.RegisterRequest
-import com.sakura.aura.data.model.response.AuthResponse
+import com.sakura.aura.domain.model.AuthToken
+import com.sakura.aura.domain.model.LoginCredentials
+import com.sakura.aura.domain.model.RegistrationData
 
 interface AuthRepository {
-
-    suspend fun register(request: RegisterRequest): Result<AuthResponse>
-
-    suspend fun login(request: LoginRequest): Result<AuthResponse>
-
-    suspend fun logout(request: LogoutRequest): Result<Unit>
-
-    suspend fun refreshToken(request: RefreshTokenRequest): Result<AuthResponse>
+    suspend fun register(data: RegistrationData): Result<AuthToken>
+    suspend fun login(credentials: LoginCredentials): Result<AuthToken>
+    suspend fun logout(jwtToken: String, refreshToken: String): Result<Unit>
+    suspend fun refreshToken(token: AuthToken): Result<AuthToken>
 }

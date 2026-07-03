@@ -19,34 +19,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
-import com.sakura.aura.data.model.response.ReadingResponse
+import com.sakura.aura.domain.model.Reading
+import com.sakura.aura.domain.util.AuraMapper
 import com.sakura.aura.navigation.SakuraBottomNavBar
 import com.sakura.aura.ui.components.SakuraBackground
 import com.sakura.aura.ui.theme.LocalThemeViewModel
 import com.sakura.aura.ui.theme.SakuraPink
-
-private fun auraColorFromString(color: String): Color = when (color.lowercase()) {
-    "rojo", "roja" -> Color(0xFFE74C3C)
-    "naranja" -> Color(0xFFE67E22)
-    "amarillo", "amarilla" -> Color(0xFFF1C40F)
-    "verde" -> Color(0xFF2ECC71)
-    "azul" -> Color(0xFF5DADE2)
-    "morado", "violeta", "morada" -> Color(0xFF9B59B6)
-    "rosa" -> Color(0xFFE91E8C)
-    else -> Color(0xFFCCCCCC)
-}
-
-private fun stressColor(level: Double): Color = when {
-    level < 30 -> Color(0xFF2ECC71)
-    level < 60 -> Color(0xFFF39C12)
-    else -> Color(0xFFE74C3C)
-}
-
-private fun stressLabel(level: Double): String = when {
-    level < 30 -> "Bajo"
-    level < 60 -> "Medio"
-    else -> "Alto"
-}
 
 @Composable
 fun HistoryScreen(navController: NavController) {
@@ -60,7 +38,7 @@ fun HistoryScreen(navController: NavController) {
     val textSub  = if (isLight) Color(0xFF666666) else Color.White.copy(alpha = 0.45f)
     val cardBg   = if (isLight) Color(0xFFFFFFFF) else Color(0xFF1A1A1A).copy(alpha = 0.85f)
 
-    var selectedReading by remember { mutableStateOf<ReadingResponse?>(null) }
+    var selectedReading by remember { mutableStateOf<Reading?>(null) }
 
     Scaffold(
         containerColor = Color.Transparent,
@@ -110,7 +88,7 @@ fun HistoryScreen(navController: NavController) {
                         ) {
                             MetricCard(
                                 label = "BPM promedio",
-                                value = uiState.summary?.bpmPromedioGlobal?.toInt()?.toString() ?: "--",
+                                value = uiState.summary?.globalAvgBpm?.toInt()?.toString() ?: "--",
                                 unit = "bpm",
                                 valueColor = Color(0xFFE91E8C),
                                 textSub = textSub, cardBg = cardBg,
@@ -118,7 +96,7 @@ fun HistoryScreen(navController: NavController) {
                             )
                             MetricCard(
                                 label = "Estrés promedio",
-                                value = uiState.summary?.nivelEstresPromedio?.toInt()?.toString() ?: "--",
+                                value = uiState.summary?.globalAvgStress?.toInt()?.toString() ?: "--",
                                 unit = "%",
                                 valueColor = Color(0xFF5DADE2),
                                 textSub = textSub, cardBg = cardBg,
@@ -224,13 +202,13 @@ private fun MiniChart(color: Color) {
 
 @Composable
 private fun AuraReadingCard(
-    reading  : ReadingResponse,
+    reading  : Reading,
     textMain : Color,
     textSub  : Color,
     cardBg   : Color,
     onClick  : () -> Unit
 ) {
-    val auraColor = auraColorFromString(reading.auraDominante)
+    val auraColor = AuraMapper.auraColorFromString(reading.dominantAura)
 
     Card(
         modifier = Modifier.fillMaxWidth().clickable { onClick() },
@@ -250,19 +228,19 @@ private fun AuraReadingCard(
             )
             Spacer(Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text("Aura ${reading.auraDominante}", color = textMain, fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                Text("Aura ${reading.dominantAura}", color = textMain, fontSize = 15.sp, fontWeight = FontWeight.Medium)
                 Spacer(Modifier.height(3.dp))
                 Text(
-                    "${reading.fechaInicio.take(10)} · ${reading.fechaInicio.substring(11, 16)}",
+                    "${reading.startDate.take(10)} · ${reading.startDate.substring(11, 16)}",
                     color = textSub, fontSize = 12.sp
                 )
             }
             Column(horizontalAlignment = Alignment.End) {
-                Text("${reading.bpmPromedio.toInt()} bpm", color = textMain, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                Text("${reading.avgBpm.toInt()} bpm", color = textMain, fontSize = 14.sp, fontWeight = FontWeight.Medium)
                 Spacer(Modifier.height(3.dp))
                 Text(
-                    stressLabel(reading.nivelEstres),
-                    color = stressColor(reading.nivelEstres),
+                    AuraMapper.stressLabel(reading.stressLevel),
+                    color = AuraMapper.stressColor(reading.stressLevel),
                     fontSize = 13.sp, fontWeight = FontWeight.SemiBold
                 )
             }

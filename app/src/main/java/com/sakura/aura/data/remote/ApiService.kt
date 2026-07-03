@@ -19,57 +19,57 @@ import retrofit2.http.*
 interface ApiService {
 
     // ── Auth ───────────────────────────────────────────────────────────────
-    @POST("api/Auth/register")
+    @POST(ApiEndpoints.AUTH_REGISTER)
     suspend fun register(
         @Body request: RegisterRequest
     ): Response<AuthResponse>
 
-    @POST("api/Auth/login")
+    @POST(ApiEndpoints.AUTH_LOGIN)
     suspend fun login(
         @Body request: LoginRequest
     ): Response<AuthResponse>
 
-    @POST("api/Auth/logout")
+    @POST(ApiEndpoints.AUTH_LOGOUT)
     suspend fun logout(
         @Body request: LogoutRequest
     ): Response<Unit>
 
-    @POST("api/Auth/refresh-token")
+    @POST(ApiEndpoints.AUTH_REFRESH_TOKEN)
     suspend fun refreshToken(
         @Body request: RefreshTokenRequest
     ): Response<AuthResponse>
 
     // ── User ───────────────────────────────────────────────────────────────
-    @GET("api/User/profile")
+    @GET(ApiEndpoints.USER_PROFILE)
     suspend fun getProfile(): Response<UserResponse>
 
-    @PUT("api/User/profile")
+    @PUT(ApiEndpoints.USER_PROFILE)
     suspend fun updateProfile(
         @Body request: UpdateProfileRequest
     ): Response<UserResponse>
 
-    @GET("api/User/stats")
+    @GET(ApiEndpoints.USER_STATS)
     suspend fun getUserStats(): Response<UserStatsResponse>
 
     // ── Readings ───────────────────────────────────────────────────────────
-    @GET("api/Readings")
+    @GET(ApiEndpoints.READINGS)
     suspend fun getReadings(
         @Query("page") page: Int = 1,
         @Query("pageSize") pageSize: Int = 20
     ): Response<List<ReadingResponse>>
 
-    @POST("api/Readings")
+    @POST(ApiEndpoints.READINGS)
     suspend fun createReading(
         @Body request: CreateReadingRequest
     ): Response<ReadingResponse>
 
-    @GET("api/Readings/summary")
+    @GET(ApiEndpoints.READINGS_SUMMARY)
     suspend fun getReadingsSummary(): Response<ReadingSummaryResponse>
 
     // ── Challenges ─────────────────────────────────────────────────────────
-    @GET("api/Challenges")
+    @GET(ApiEndpoints.CHALLENGES)
     suspend fun getChallenges(): Response<List<ChallengeResponse>>
 
-    @GET("api/Medals")
+    @GET(ApiEndpoints.MEDALS)
     suspend fun getMedals(): Response<List<MedalResponse>>
 }

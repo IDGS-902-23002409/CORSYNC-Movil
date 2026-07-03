@@ -1,6 +1,5 @@
 package com.sakura.aura.data.remote
 
-import com.sakura.aura.BuildConfig
 import com.sakura.aura.data.model.request.RefreshTokenRequest
 import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
@@ -89,7 +88,7 @@ object RetrofitClient {
             .build()
 
         val retrofit = Retrofit.Builder()
-            .baseUrl(BuildConfig.API_BASE_URL)
+            .baseUrl(AppConfig.apiBaseUrl)
             .client(client)
             .addConverterFactory(GsonConverterFactory.create())
             .build()

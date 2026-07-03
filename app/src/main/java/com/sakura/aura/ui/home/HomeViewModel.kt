@@ -2,20 +2,19 @@ package com.sakura.aura.ui.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.sakura.aura.data.model.response.TelemetryResponse
-import com.sakura.aura.data.remote.SignalRService
-import com.sakura.aura.data.remote.TokenManager
+import com.sakura.aura.domain.model.Telemetry
+import com.sakura.aura.domain.usecase.ScanAuraUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class HomeUiState(
-    val isConnected  : Boolean           = false,
-    val isScanning   : Boolean           = false,
-    val telemetry    : TelemetryResponse? = null,
-    val auraColor    : AuraColorUi       = AuraColorUi.NEUTRAL,
-    val error        : String?           = null
+    val isConnected  : Boolean       = false,
+    val isScanning   : Boolean       = false,
+    val telemetry    : Telemetry?    = null,
+    val auraColor    : AuraColorUi   = AuraColorUi.NEUTRAL,
+    val error        : String?       = null
 )
 
 enum class AuraColorUi(val hex: Long, val label: String) {
@@ -36,8 +35,7 @@ enum class AuraColorUi(val hex: Long, val label: String) {
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
-    private val signalRService : SignalRService,
-    private val tokenManager   : TokenManager
+    private val scanAuraUseCase: ScanAuraUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -45,13 +43,13 @@ class HomeViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            signalRService.isConnected.collect { connected ->
+            scanAuraUseCase.isConnected.collect { connected ->
                 _uiState.update { it.copy(isConnected = connected) }
             }
         }
 
         viewModelScope.launch {
-            signalRService.telemetry.collect { telemetry ->
+            scanAuraUseCase.telemetry.collect { telemetry ->
                 telemetry?.let {
                     _uiState.update { state ->
                         state.copy(
@@ -64,7 +62,7 @@ class HomeViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
-            signalRService.error.collect { error ->
+            scanAuraUseCase.error.collect { error ->
                 if (error != null) {
                     _uiState.update { it.copy(error = error) }
                 }
@@ -73,14 +71,9 @@ class HomeViewModel @Inject constructor(
     }
 
     fun connect() {
-        val token = tokenManager.getJwtToken()
-        if (token == null) {
-            _uiState.update { it.copy(error = "No hay sesión activa") }
-            return
-        }
         viewModelScope.launch {
             try {
-                signalRService.connect(token)
+                scanAuraUseCase.connect()
             } catch (e: Exception) {
                 _uiState.update { it.copy(error = "Error de conexión: ${e.message}") }
             }
@@ -93,7 +86,7 @@ class HomeViewModel @Inject constructor(
         }
         viewModelScope.launch {
             try {
-                signalRService.startMeasurement()
+                scanAuraUseCase.startScan()
                 _uiState.update { it.copy(isScanning = true, error = null) }
             } catch (e: Exception) {
                 _uiState.update { it.copy(error = "Error al iniciar: ${e.message}") }
@@ -104,7 +97,7 @@ class HomeViewModel @Inject constructor(
     fun stopScan() {
         viewModelScope.launch {
             try {
-                signalRService.stopMeasurement()
+                scanAuraUseCase.stopScan()
                 _uiState.update { it.copy(isScanning = false) }
             } catch (e: Exception) {
                 _uiState.update { it.copy(error = "Error al detener: ${e.message}") }
@@ -118,6 +111,6 @@ class HomeViewModel @Inject constructor(
 
     override fun onCleared() {
         super.onCleared()
-        signalRService.disconnect()
+        scanAuraUseCase.disconnect()
     }
 }

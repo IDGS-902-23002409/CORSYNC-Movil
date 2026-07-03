@@ -1,3 +1,6 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -5,6 +8,14 @@ plugins {
     id("com.google.dagger.hilt.android")
     id("com.google.devtools.ksp")
 }
+
+val envFile = rootProject.file(".env")
+val envProps = Properties().apply {
+    if (envFile.exists()) {
+        load(FileInputStream(envFile))
+    }
+}
+fun env(key: String, default: String): String = envProps.getProperty(key, default)
 
 android {
     namespace = "com.sakura.aura"
@@ -18,8 +29,8 @@ android {
         versionName = "1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        buildConfigField("String", "API_BASE_URL", "\"https://corsync.runasp.net/\"")
-        buildConfigField("String", "SIGNALR_HUB_URL", "\"https://corsync.runasp.net/telemetryHub\"")
+        buildConfigField("String", "API_BASE_URL", "\"${env("API_BASE_URL", "https://corsync.runasp.net/")}\"")
+        buildConfigField("String", "SIGNALR_HUB_URL", "\"${env("SIGNALR_HUB_URL", "https://corsync.runasp.net/telemetryHub")}\"")
     }
 
     buildTypes {
@@ -89,4 +100,27 @@ dependencies {
 
     // ── Token seguro ──────────────────────────────────────────────────────
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
+
+    // ═══════════════════════════════════════════════════════════════════════
+    //  TESTS UNITARIOS (test/)
+    // ═══════════════════════════════════════════════════════════════════════
+    testImplementation(libs.junit)
+    testImplementation(libs.mockk)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.turbine)
+    testImplementation(libs.okhttp.mockwebserver)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.test.core)
+
+    // ═══════════════════════════════════════════════════════════════════════
+    //  TESTS INSTRUMENTADOS (androidTest/)
+    // ═══════════════════════════════════════════════════════════════════════
+    androidTestImplementation(libs.androidx.test.ext.junit)
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.androidx.compose.ui.test)
+    androidTestImplementation(libs.androidx.compose.ui.test.manifest)
+    androidTestImplementation(libs.espresso.core)
+    androidTestImplementation(libs.mockk)
+    androidTestImplementation(libs.hilt.android.testing)
+    kspAndroidTest(libs.hilt.compiler)
 }
