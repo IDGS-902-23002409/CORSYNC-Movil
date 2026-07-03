@@ -4,11 +4,11 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import com.sakura.aura.ui.theme.auth.AuthScreen
-import com.sakura.aura.ui.theme.challenges.ChallengesScreen
-import com.sakura.aura.ui.theme.history.HistoryScreen
-import com.sakura.aura.ui.theme.home.HomeScreen
-import com.sakura.aura.ui.theme.profile.ProfileScreen
+import com.sakura.aura.ui.auth.AuthScreen
+import com.sakura.aura.ui.challenges.ChallengesScreen
+import com.sakura.aura.ui.history.HistoryScreen
+import com.sakura.aura.ui.home.HomeScreen
+import com.sakura.aura.ui.profile.ProfileScreen
 
 @Composable
 fun SakuraNavGraph(navController: NavHostController) {

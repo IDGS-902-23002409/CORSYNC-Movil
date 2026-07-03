@@ -1,4 +1,4 @@
-package com.sakura.aura.ui.theme.history
+package com.sakura.aura.ui.history
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*

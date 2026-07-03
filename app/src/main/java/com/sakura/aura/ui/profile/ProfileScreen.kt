@@ -1,4 +1,4 @@
-package com.sakura.aura.ui.theme.profile
+package com.sakura.aura.ui.profile
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -10,8 +10,9 @@ import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.Hardware
 import androidx.compose.material.icons.outlined.LightMode
+import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -22,18 +23,36 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.sakura.aura.navigation.SakuraBottomNavBar
-import com.sakura.aura.ui.theme.components.SakuraBackground
+import com.sakura.aura.navigation.SakuraRoutes
+import com.sakura.aura.ui.theme.LocalThemeViewModel
+import com.sakura.aura.ui.components.SakuraBackground
 import com.sakura.aura.ui.theme.SakuraPink
+import com.sakura.aura.utils.ThemeViewModel
 
-// ── Pantalla Perfil ───────────────────────────────────────────────────────────
 @Composable
-fun ProfileScreen(navController: NavController) {
+fun ProfileScreen(
+    navController  : NavController,
+
+) {
+    val themeViewModel = LocalThemeViewModel.current
+    // Observa el estado actual del tema
+    val isLight by themeViewModel.isLightTheme.collectAsState()
+
+    val bgCard    = if (isLight) Color(0xFFFFFFFF)             else Color(0xFF1A1A1A).copy(alpha = 0.85f)
+    val textMain  = if (isLight) Color(0xFF1A1A1A)             else Color.White
+    val textSub   = if (isLight) Color(0xFF666666)             else Color.White.copy(alpha = 0.4f)
+    val divider   = if (isLight) Color(0xFFE0D8E0)             else Color.White.copy(alpha = 0.1f)
+    val iconBg    = if (isLight) Color(0xFFF0EBF0)             else Color(0xFF2A2A2A)
+
     Scaffold(
         containerColor = Color.Transparent,
         bottomBar = { SakuraBottomNavBar(navController) }
     ) { innerPadding ->
 
-        SakuraBackground {
+        _root_ide_package_.com.sakura.aura.ui.components.SakuraBackground(
+            // En tema claro, overlay más suave
+            overlayAlpha = if (isLight) 0.15f else 0.62f
+        ) {
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
@@ -50,33 +69,28 @@ fun ProfileScreen(navController: NavController) {
                         horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        // Avatar circular
                         Box(
                             contentAlignment = Alignment.Center,
                             modifier = Modifier
                                 .size(88.dp)
                                 .clip(CircleShape)
-                                .background(Color(0xFF2A2A2A))
+                                .background(iconBg)
                         ) {
                             Icon(
                                 imageVector = Icons.Outlined.AccountCircle,
                                 contentDescription = null,
-                                tint = Color.White.copy(alpha = 0.6f),
+                                tint = textMain.copy(alpha = 0.6f),
                                 modifier = Modifier.size(72.dp)
                             )
                         }
-
                         Spacer(modifier = Modifier.height(14.dp))
-
                         Text(
                             text = "Hana Tanaka",
-                            color = Color.White,
+                            color = textMain,
                             fontSize = 22.sp,
                             fontWeight = FontWeight.Light
                         )
-
                         Spacer(modifier = Modifier.height(4.dp))
-
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -84,7 +98,7 @@ fun ProfileScreen(navController: NavController) {
                             Text("♓", color = SakuraPink, fontSize = 12.sp)
                             Text(
                                 text = "Piscis · Soñadora",
-                                color = Color.White.copy(alpha = 0.5f),
+                                color = textSub,
                                 fontSize = 13.sp
                             )
                         }
@@ -96,9 +110,7 @@ fun ProfileScreen(navController: NavController) {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = Color(0xFF1A1A1A).copy(alpha = 0.85f)
-                        )
+                        colors = CardDefaults.cardColors(containerColor = bgCard)
                     ) {
                         Row(
                             modifier = Modifier.padding(16.dp),
@@ -117,14 +129,14 @@ fun ProfileScreen(navController: NavController) {
                             Column {
                                 Text(
                                     text = "AURA ESPIRITUAL DOMINANTE",
-                                    color = Color.White.copy(alpha = 0.4f),
+                                    color = textSub,
                                     fontSize = 10.sp,
                                     letterSpacing = 1.sp
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
                                     text = "Rosa Cuarzo",
-                                    color = Color.White,
+                                    color = textMain,
                                     fontSize = 18.sp,
                                     fontWeight = FontWeight.Light
                                 )
@@ -133,14 +145,12 @@ fun ProfileScreen(navController: NavController) {
                     }
                 }
 
-                // ── Stats: BPM · Estrés · Sesiones ────────────────────────
+                // ── Stats ──────────────────────────────────────────────────
                 item {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = Color(0xFF1A1A1A).copy(alpha = 0.85f)
-                        )
+                        colors = CardDefaults.cardColors(containerColor = bgCard)
                     ) {
                         Row(
                             modifier = Modifier
@@ -148,51 +158,65 @@ fun ProfileScreen(navController: NavController) {
                                 .padding(vertical = 20.dp),
                             horizontalArrangement = Arrangement.SpaceEvenly
                         ) {
-                            StatItem(value = "72",   label = "BPM medio")
-                            StatDivider()
-                            StatItem(value = "Bajo", label = "Estrés")
-                            StatDivider()
-                            StatItem(value = "28",   label = "Sesiones")
+                            StatItem("72", "BPM medio", textMain, textSub)
+                            Box(modifier = Modifier.width(1.dp).height(36.dp).background(divider))
+                            StatItem("Bajo", "Estrés", textMain, textSub)
+                            Box(modifier = Modifier.width(1.dp).height(36.dp).background(divider))
+                            StatItem("28", "Sesiones", textMain, textSub)
                         }
                     }
                 }
 
-                // ── Opciones de configuración ──────────────────────────────
+                // ── Opciones ───────────────────────────────────────────────
                 item {
                     Column(
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
+                        // Botón de tema — cambia ícono y texto dinámicamente
                         SettingsRow(
-                            icon  = Icons.Outlined.LightMode,
-                            label = "Tema Claro",
-                            onClick = {}
+                            icon = if (isLight) Icons.Outlined.DarkMode
+                            else Icons.Outlined.LightMode,
+                            label = if (isLight) "Tema Oscuro" else "Tema Claro",
+                            textColor = textMain,
+                            iconBg = iconBg,
+                            onClick = { themeViewModel.toggleTheme() }
                         )
                         SettingsRow(
-                            icon  = Icons.Outlined.Hardware,
+                            icon = Icons.Outlined.Hardware,
                             label = "Ajustes de Hardware",
+                            textColor = textMain,
+                            iconBg = iconBg,
                             onClick = {}
                         )
                         SettingsRow(
-                            icon  = Icons.Outlined.AccountCircle,
+                            icon = Icons.Outlined.AccountCircle,
                             label = "Cuenta",
+                            textColor = textMain,
+                            iconBg = iconBg,
                             onClick = {}
                         )
                     }
                 }
 
-                // ── Botón cerrar sesión ────────────────────────────────────
+                // ── Cerrar sesión ──────────────────────────────────────────
                 item {
                     Spacer(modifier = Modifier.height(4.dp))
                     Button(
-                        onClick = {},
+                        onClick = {
+                            // Navega a AUTH y limpia todo el back stack
+                            navController.navigate(SakuraRoutes.AUTH) {
+                                popUpTo(0) { inclusive = true }
+                                launchSingleTop = true
+                            }
+                        },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(50.dp),
                         shape = RoundedCornerShape(50.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = Color(0xFF2A1A1A),
-                            contentColor   = Color(0xFFE74C3C)
+                            contentColor = Color(0xFFE74C3C)
                         )
                     ) {
                         Text(
@@ -211,47 +235,35 @@ fun ProfileScreen(navController: NavController) {
 
 // ── Stat individual ────────────────────────────────────────────────────────────
 @Composable
-private fun StatItem(value: String, label: String) {
+private fun StatItem(
+    value: String,
+    label: String,
+    textMain: Color,
+    textSub: Color
+) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(
-            text = value,
-            color = Color.White,
-            fontSize = 22.sp,
-            fontWeight = FontWeight.Light
-        )
+        Text(text = value, color = textMain, fontSize = 22.sp, fontWeight = FontWeight.Light)
         Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = label,
-            color = Color.White.copy(alpha = 0.4f),
-            fontSize = 11.sp
-        )
+        Text(text = label, color = textSub, fontSize = 11.sp)
     }
-}
-
-// ── Separador vertical ─────────────────────────────────────────────────────────
-@Composable
-private fun StatDivider() {
-    Box(
-        modifier = Modifier
-            .width(1.dp)
-            .height(36.dp)
-            .background(Color.White.copy(alpha = 0.1f))
-    )
 }
 
 // ── Fila de configuración ──────────────────────────────────────────────────────
 @Composable
 private fun SettingsRow(
-    icon: ImageVector,
-    label: String,
-    onClick: () -> Unit
+    icon      : ImageVector,
+    label     : String,
+    textColor : Color,
+    iconBg    : Color,
+    onClick   : () -> Unit
 ) {
     Card(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color(0xFF1A1A1A).copy(alpha = 0.85f)
+            containerColor = if (textColor == Color(0xFF1A1A1A))
+                Color(0xFFFFFFFF) else Color(0xFF1A1A1A).copy(alpha = 0.85f)
         )
     ) {
         Row(
@@ -263,26 +275,26 @@ private fun SettingsRow(
                 modifier = Modifier
                     .size(36.dp)
                     .clip(RoundedCornerShape(10.dp))
-                    .background(Color(0xFF2A2A2A))
+                    .background(iconBg)
             ) {
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    tint = Color.White.copy(alpha = 0.7f),
+                    tint = textColor.copy(alpha = 0.7f),
                     modifier = Modifier.size(18.dp)
                 )
             }
             Spacer(modifier = Modifier.width(14.dp))
             Text(
                 text = label,
-                color = Color.White,
+                color = textColor,
                 fontSize = 15.sp,
                 modifier = Modifier.weight(1f)
             )
             Icon(
                 imageVector = Icons.Outlined.ChevronRight,
                 contentDescription = null,
-                tint = Color.White.copy(alpha = 0.3f),
+                tint = textColor.copy(alpha = 0.3f),
                 modifier = Modifier.size(20.dp)
             )
         }
