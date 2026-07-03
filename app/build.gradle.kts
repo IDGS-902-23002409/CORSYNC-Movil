@@ -18,7 +18,7 @@ android {
         versionName = "1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        buildConfigField("String", "API_BASE_URL", "\"http://192.168.11.65:5213/\"")
+        buildConfigField("String", "API_BASE_URL", "\"https://corsync.runasp.net/\"")
         buildConfigField("String", "SIGNALR_HUB_URL", "\"http://192.168.11.65:5213/telemetryHub\"")
     }
 
