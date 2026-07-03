@@ -2,10 +2,10 @@ package com.sakura.aura.ui.auth
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.security.crypto.EncryptedSharedPreferences
 import com.sakura.aura.data.model.request.LoginRequest
 import com.sakura.aura.data.model.request.RegisterRequest
-import com.sakura.aura.data.remote.ApiService
+import com.sakura.aura.data.remote.TokenManager
+import com.sakura.aura.domain.repository.AuthRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -22,70 +22,44 @@ sealed class AuthUiState {
 
 @HiltViewModel
 class AuthViewModel @Inject constructor(
-    private val apiService: ApiService,
-    private val prefs: EncryptedSharedPreferences
+    private val authRepository: AuthRepository,
+    private val tokenManager: TokenManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<AuthUiState>(AuthUiState.Idle)
     val uiState: StateFlow<AuthUiState> = _uiState.asStateFlow()
 
-    // ── Login ──────────────────────────────────────────────────────────────
     fun login(username: String, password: String) {
         viewModelScope.launch {
             _uiState.value = AuthUiState.Loading
-            try {
-                val response = apiService.login(LoginRequest(username, password))
-                if (response.isSuccessful && response.body() != null) {
-                    val body = response.body()!!
-                    // Guardar token de forma segura
-                    prefs.edit()
-                        .putString("jwt_token", body.token)
-                        .putString("username", body.user.username)
-                        .putString("nombre_completo", body.user.nombreCompleto)
-                        .apply()
-                    _uiState.value = AuthUiState.Success(body.token, body.user.username)
-                } else {
-                    _uiState.value = AuthUiState.Error(
-                        when (response.code()) {
-                            401  -> "Usuario o contraseña incorrectos"
-                            else -> "Error ${response.code()}"
-                        }
-                    )
+            val result = authRepository.login(LoginRequest(username, password))
+            result.fold(
+                onSuccess = { auth ->
+                    tokenManager.saveUserInfo(auth.user.username, auth.user.nombreCompleto)
+                    _uiState.value = AuthUiState.Success(auth.token, auth.user.username)
+                },
+                onFailure = { e ->
+                    _uiState.value = AuthUiState.Error(e.message ?: "Error al iniciar sesión")
                 }
-            } catch (e: Exception) {
-                _uiState.value = AuthUiState.Error("Sin conexión: ${e.message}")
-            }
+            )
         }
     }
 
-    // ── Register ───────────────────────────────────────────────────────────
     fun register(username: String, email: String, password: String, nombreCompleto: String) {
         viewModelScope.launch {
             _uiState.value = AuthUiState.Loading
-            try {
-                val response = apiService.register(
-                    RegisterRequest(username, email, password, nombreCompleto)
-                )
-                if (response.isSuccessful && response.body() != null) {
-                    val body = response.body()!!
-                    prefs.edit()
-                        .putString("jwt_token", body.token)
-                        .putString("username", body.user.username)
-                        .putString("nombre_completo", body.user.nombreCompleto)
-                        .apply()
-                    _uiState.value = AuthUiState.Success(body.token, body.user.username)
-                } else {
-                    _uiState.value = AuthUiState.Error(
-                        when (response.code()) {
-                            400  -> "Datos inválidos o contraseña muy débil"
-                            409  -> "El usuario o correo ya están registrados"
-                            else -> "Error ${response.code()}"
-                        }
-                    )
+            val result = authRepository.register(
+                RegisterRequest(username, email, password, nombreCompleto)
+            )
+            result.fold(
+                onSuccess = { auth ->
+                    tokenManager.saveUserInfo(auth.user.username, auth.user.nombreCompleto)
+                    _uiState.value = AuthUiState.Success(auth.token, auth.user.username)
+                },
+                onFailure = { e ->
+                    _uiState.value = AuthUiState.Error(e.message ?: "Error al registrarse")
                 }
-            } catch (e: Exception) {
-                _uiState.value = AuthUiState.Error("Sin conexión: ${e.message}")
-            }
+            )
         }
     }
 

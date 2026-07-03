@@ -18,13 +18,33 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.sakura.aura.data.model.response.ReadingResponse
+
+private fun auraColorFromString(color: String): Color = when (color.lowercase()) {
+    "rojo", "roja" -> Color(0xFFE74C3C)
+    "naranja" -> Color(0xFFE67E22)
+    "amarillo", "amarilla" -> Color(0xFFF1C40F)
+    "verde" -> Color(0xFF2ECC71)
+    "azul" -> Color(0xFF5DADE2)
+    "morado", "violeta", "morada" -> Color(0xFF9B59B6)
+    "rosa" -> Color(0xFFE91E8C)
+    else -> Color(0xFFCCCCCC)
+}
+
+private fun stressLabel(level: Double): String = when {
+    level < 30 -> "Bajo"
+    level < 60 -> "Medio"
+    else -> "Alto"
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AuraDetailSheet(
-    reading: AuraReadingUi,
+    reading: ReadingResponse,
     onDismiss: () -> Unit
 ) {
+    val auraColor = auraColorFromString(reading.auraDominante)
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         containerColor   = Color(0xFFF5F5F5),
@@ -36,7 +56,6 @@ fun AuraDetailSheet(
                 .fillMaxWidth()
                 .padding(24.dp)
         ) {
-            // ── Header ─────────────────────────────────────────────────────
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth()
@@ -45,12 +64,12 @@ fun AuraDetailSheet(
                     modifier = Modifier
                         .size(44.dp)
                         .clip(CircleShape)
-                        .background(reading.color)
+                        .background(auraColor)
                 )
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "${reading.date} · ${reading.time}",
+                        text = reading.fechaInicio.take(10),
                         color = Color(0xFF888888),
                         fontSize = 12.sp
                     )
@@ -66,24 +85,22 @@ fun AuraDetailSheet(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // ── Métricas rápidas ───────────────────────────────────────────
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 SheetMetricBadge(
-                    value = "${reading.bpm}",
+                    value = "${reading.bpmPromedio.toInt()} bpm",
                     modifier = Modifier.weight(1f)
                 )
                 SheetMetricBadge(
-                    value = "${reading.stressLevel} · ${reading.stressPercent}%",
+                    value = "${stressLabel(reading.nivelEstres)} · ${reading.nivelEstres.toInt()}%",
                     modifier = Modifier.weight(1f)
                 )
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // ── Gráfica flujo cardíaco ─────────────────────────────────────
             DetailChartCard(
                 title  = "Flujo Cardíaco",
                 color  = Color(0xFFE91E8C),
@@ -92,7 +109,6 @@ fun AuraDetailSheet(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // ── Gráfica GSR ────────────────────────────────────────────────
             DetailChartCard(
                 title  = "Conductancia GSR",
                 color  = Color(0xFF5DADE2),
@@ -101,15 +117,13 @@ fun AuraDetailSheet(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // ── El oráculo susurra ─────────────────────────────────────────
-            OracleMessage(auraName = reading.name)
+            OracleMessage(auraName = reading.auraDominante)
 
             Spacer(modifier = Modifier.height(24.dp))
         }
     }
 }
 
-// ── Badge de métrica ──────────────────────────────────────────────────────────
 @Composable
 private fun SheetMetricBadge(value: String, modifier: Modifier = Modifier) {
     Box(
@@ -129,7 +143,6 @@ private fun SheetMetricBadge(value: String, modifier: Modifier = Modifier) {
     }
 }
 
-// ── Card con gráfica de detalle ───────────────────────────────────────────────
 @Composable
 private fun DetailChartCard(
     title: String,
@@ -161,7 +174,6 @@ private fun DetailChartCard(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Gráfica
             androidx.compose.foundation.Canvas(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -181,16 +193,13 @@ private fun DetailChartCard(
                         strokeWidth = 2f,
                         cap = StrokeCap.Round
                     )
-                    // Punto en cada vértice
                     drawCircle(color = color, radius = 4f, center = Offset(x1, y1))
                 }
-                // Último punto
                 val lastX = (points.size - 1) * w
                 val lastY = h - (points.last() * h * 0.8f + h * 0.1f)
                 drawCircle(color = color, radius = 4f, center = Offset(lastX, lastY))
             }
 
-            // Etiquetas de tiempo
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
@@ -203,16 +212,17 @@ private fun DetailChartCard(
     }
 }
 
-// ── Mensaje del oráculo ────────────────────────────────────────────────────────
 @Composable
 private fun OracleMessage(auraName: String) {
-    val colorName = auraName.replace("Aura ", "").lowercase()
+    val colorName = auraName.lowercase()
     val message = when {
-        colorName.contains("violet") -> "Tu energía violeta habla de intuición profunda. La mente descansa y el espíritu viaja libre."
+        colorName.contains("violet") || colorName.contains("morad") -> "Tu energía violeta habla de intuición profunda. La mente descansa y el espíritu viaja libre."
         colorName.contains("azul")   -> "El azul de tu aura refleja calma oceánica. Fluyes con la corriente del universo."
         colorName.contains("rosa")   -> "Rosa cuarzo: amor incondicional y paz interior. Tu corazón late en armonía."
         colorName.contains("rojo")   -> "Energía roja intensa. El fuego interior busca expresarse. Respira y canaliza tu poder."
         colorName.contains("verde")  -> "Verde sanador. Tu aura irradia equilibrio y conexión con la naturaleza."
+        colorName.contains("naranja")  -> "Naranja creativo. La pasión y la alegría fluyen a través de ti."
+        colorName.contains("amarill")  -> "Amarillo radiante. Tu mente brilla con claridad y optimismo."
         else -> "Tu energía es única. El universo reconoce tu luz interior."
     }
 
