@@ -42,7 +42,7 @@ class ChallengesRepositoryImplTest {
 
         assertTrue(result.isSuccess)
         assertEquals(1, result.getOrNull()!!.size)
-        assertEquals("Primera Lectura", result.getOrNull()!!.first()?.titulo)
+        assertEquals("Primera Lectura", result.getOrNull()!!.first().title)
     }
 
     @Test
@@ -62,7 +62,7 @@ class ChallengesRepositoryImplTest {
 
         assertTrue(result.isSuccess)
         assertEquals(1, result.getOrNull()!!.size)
-        assertEquals("Primer Escaneo", result.getOrNull()!!.first()?.nombre)
+        assertEquals("Primer Escaneo", result.getOrNull()!!.first().name)
     }
 
     @Test

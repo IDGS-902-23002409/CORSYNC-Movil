@@ -1,9 +1,9 @@
 package com.sakura.aura.data.repository
 
-import com.sakura.aura.data.model.request.CreateReadingRequest
 import com.sakura.aura.data.model.response.ReadingResponse
 import com.sakura.aura.data.model.response.ReadingSummaryResponse
 import com.sakura.aura.data.remote.ApiService
+import com.sakura.aura.domain.model.NewReadingData
 import io.mockk.*
 import io.mockk.junit4.MockKRule
 import kotlinx.coroutines.runBlocking
@@ -45,7 +45,7 @@ class ReadingsRepositoryImplTest {
 
         assertTrue(result.isSuccess)
         assertEquals(1, result.getOrNull()!!.size)
-        assertEquals("ESP32_001", result.getOrNull()!!.first()?.dispositivoId)
+        assertEquals("ESP32_001", result.getOrNull()!!.first().deviceId)
     }
 
     @Test
@@ -59,12 +59,12 @@ class ReadingsRepositoryImplTest {
 
     @Test
     fun `createReading success returns reading`() = runBlocking {
-        val request = CreateReadingRequest(
-            dispositivoId = "ESP32_001", bpmPromedio = 72.0, bpmMaximo = 85.0,
-            bpmMinimo = 60.0, gsrRawPromedio = 1200, gsrVoltajePromedio = 1.0,
-            nivelEstres = 25.0, auraDominante = "Verde", notas = null,
-            duracionSegundos = 300, fechaInicio = "2026-07-01T20:25:00Z",
-            fechaFin = "2026-07-01T20:30:00Z"
+        val request = NewReadingData(
+            deviceId = "ESP32_001", avgBpm = 72.0, maxBpm = 85.0,
+            minBpm = 60.0, avgGsrRaw = 1200, avgGsrVoltage = 1.0,
+            stressLevel = 25.0, dominantAura = "Verde", notes = null,
+            durationSeconds = 300, startDate = "2026-07-01T20:25:00Z",
+            endDate = "2026-07-01T20:30:00Z"
         )
         coEvery { apiService.createReading(any()) } returns Response.success(mockReading)
 
@@ -76,12 +76,12 @@ class ReadingsRepositoryImplTest {
 
     @Test
     fun `createReading failure returns error message`() = runBlocking {
-        val request = CreateReadingRequest(
-            dispositivoId = "ESP32_001", bpmPromedio = 72.0, bpmMaximo = 85.0,
-            bpmMinimo = 60.0, gsrRawPromedio = 1200, gsrVoltajePromedio = 1.0,
-            nivelEstres = 25.0, auraDominante = "Verde", notas = null,
-            duracionSegundos = 300, fechaInicio = "2026-07-01T20:25:00Z",
-            fechaFin = "2026-07-01T20:30:00Z"
+        val request = NewReadingData(
+            deviceId = "ESP32_001", avgBpm = 72.0, maxBpm = 85.0,
+            minBpm = 60.0, avgGsrRaw = 1200, avgGsrVoltage = 1.0,
+            stressLevel = 25.0, dominantAura = "Verde", notes = null,
+            durationSeconds = 300, startDate = "2026-07-01T20:25:00Z",
+            endDate = "2026-07-01T20:30:00Z"
         )
         coEvery { apiService.createReading(any()) } returns Response.error(400, mockk<okhttp3.ResponseBody>(relaxed = true) {
             every { string() } returns "Validation failed"
@@ -100,8 +100,8 @@ class ReadingsRepositoryImplTest {
         val result = repository.getSummary()
 
         assertTrue(result.isSuccess)
-        assertEquals(72.8, result.getOrNull()!!.bpmPromedioGlobal, 0.01)
-        assertEquals(12, result.getOrNull()!!.totalSesiones)
+        assertEquals(72.8, result.getOrNull()!!.globalAvgBpm, 0.01)
+        assertEquals(12, result.getOrNull()!!.totalSessions)
     }
 
     @Test

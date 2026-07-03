@@ -1,9 +1,9 @@
 package com.sakura.aura.data.repository
 
-import com.sakura.aura.data.model.request.UpdateProfileRequest
 import com.sakura.aura.data.model.response.UserResponse
 import com.sakura.aura.data.model.response.UserStatsResponse
 import com.sakura.aura.data.remote.ApiService
+import com.sakura.aura.domain.model.ProfileUpdateData
 import io.mockk.*
 import io.mockk.junit4.MockKRule
 import kotlinx.coroutines.runBlocking
@@ -44,7 +44,7 @@ class UserRepositoryImplTest {
 
         assertTrue(result.isSuccess)
         assertEquals("testuser", result.getOrNull()!!.username)
-        assertEquals("Test User", result.getOrNull()!!.nombreCompleto)
+        assertEquals("Test User", result.getOrNull()!!.fullName)
     }
 
     @Test
@@ -60,17 +60,17 @@ class UserRepositoryImplTest {
     fun `updateProfile success returns updated user`() = runBlocking {
         coEvery { apiService.updateProfile(any()) } returns Response.success(mockUser)
 
-        val result = repository.updateProfile(UpdateProfileRequest("Test User", "Luz", "Piscis", null))
+        val result = repository.updateProfile(ProfileUpdateData("Test User", "Luz", "Piscis", null))
 
         assertTrue(result.isSuccess)
-        assertEquals("Luz", result.getOrNull()!!.nombreEspiritual)
+        assertEquals("Luz", result.getOrNull()!!.spiritualName)
     }
 
     @Test
     fun `updateProfile failure returns error`() = runBlocking {
         coEvery { apiService.updateProfile(any()) } returns Response.error(400, mockk(relaxed = true) { every { string() } returns "Bad request" })
 
-        val result = repository.updateProfile(UpdateProfileRequest(null, null, null, null))
+        val result = repository.updateProfile(ProfileUpdateData(null, null, null, null))
 
         assertTrue(result.isFailure)
     }
@@ -82,8 +82,8 @@ class UserRepositoryImplTest {
         val result = repository.getStats()
 
         assertTrue(result.isSuccess)
-        assertEquals(72.5, result.getOrNull()!!.bpmPromedio, 0.01)
-        assertEquals(10, result.getOrNull()!!.sesionesTotales)
+        assertEquals(72.5, result.getOrNull()!!.avgBpm, 0.01)
+        assertEquals(10, result.getOrNull()!!.totalSessions)
     }
 
     @Test
