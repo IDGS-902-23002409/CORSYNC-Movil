@@ -2,15 +2,14 @@ package com.sakura.aura.ui.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.security.crypto.EncryptedSharedPreferences
 import com.sakura.aura.data.model.response.TelemetryResponse
 import com.sakura.aura.data.remote.SignalRService
+import com.sakura.aura.data.remote.TokenManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-// ── Estado de la pantalla Home ────────────────────────────────────────────────
 data class HomeUiState(
     val isConnected  : Boolean           = false,
     val isScanning   : Boolean           = false,
@@ -19,7 +18,6 @@ data class HomeUiState(
     val error        : String?           = null
 )
 
-// ── Colores de Aura mapeados desde el string del backend ──────────────────────
 enum class AuraColorUi(val hex: Long, val label: String) {
     NEUTRAL (0xFFCCCCCC, "Sin datos"),
     ROJA    (0xFFE74C3C, "Roja"),
@@ -39,21 +37,19 @@ enum class AuraColorUi(val hex: Long, val label: String) {
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val signalRService : SignalRService,
-    private val prefs          : EncryptedSharedPreferences
+    private val tokenManager   : TokenManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
     init {
-        // Observar estado de conexión SignalR
         viewModelScope.launch {
             signalRService.isConnected.collect { connected ->
                 _uiState.update { it.copy(isConnected = connected) }
             }
         }
 
-        // Observar telemetría entrante
         viewModelScope.launch {
             signalRService.telemetry.collect { telemetry ->
                 telemetry?.let {
@@ -67,7 +63,6 @@ class HomeViewModel @Inject constructor(
             }
         }
 
-        // Observar errores
         viewModelScope.launch {
             signalRService.error.collect { error ->
                 if (error != null) {
@@ -77,9 +72,8 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    // ── Conectar y registrar en el Hub ────────────────────────────────────
     fun connect() {
-        val token = prefs.getString("jwt_token", null)
+        val token = tokenManager.getJwtToken()
         if (token == null) {
             _uiState.update { it.copy(error = "No hay sesión activa") }
             return
@@ -93,10 +87,9 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    // ── Iniciar escaneo ───────────────────────────────────────────────────
     fun startScan() {
         if (!_uiState.value.isConnected) {
-            connect()   // conectar primero si no está conectado
+            connect()
         }
         viewModelScope.launch {
             try {
@@ -108,7 +101,6 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    // ── Detener escaneo ───────────────────────────────────────────────────
     fun stopScan() {
         viewModelScope.launch {
             try {

@@ -21,22 +21,23 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.sakura.aura.navigation.SakuraBottomNavBar
 import com.sakura.aura.navigation.SakuraRoutes
-import com.sakura.aura.ui.theme.LocalThemeViewModel
 import com.sakura.aura.ui.components.SakuraBackground
+import com.sakura.aura.ui.theme.LocalThemeViewModel
 import com.sakura.aura.ui.theme.SakuraPink
 import com.sakura.aura.utils.ThemeViewModel
 
 @Composable
 fun ProfileScreen(
     navController  : NavController,
-
 ) {
     val themeViewModel = LocalThemeViewModel.current
-    // Observa el estado actual del tema
     val isLight by themeViewModel.isLightTheme.collectAsState()
+    val profileViewModel: ProfileViewModel = hiltViewModel()
+    val uiState by profileViewModel.uiState.collectAsState()
 
     val bgCard    = if (isLight) Color(0xFFFFFFFF)             else Color(0xFF1A1A1A).copy(alpha = 0.85f)
     val textMain  = if (isLight) Color(0xFF1A1A1A)             else Color.White
@@ -49,191 +50,212 @@ fun ProfileScreen(
         bottomBar = { SakuraBottomNavBar(navController) }
     ) { innerPadding ->
 
-        _root_ide_package_.com.sakura.aura.ui.components.SakuraBackground(
-            // En tema claro, overlay más suave
+        SakuraBackground(
             overlayAlpha = if (isLight) 0.15f else 0.62f
         ) {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-                    .padding(horizontal = 20.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                item { Spacer(modifier = Modifier.height(24.dp)) }
-
-                // ── Avatar y nombre ────────────────────────────────────────
-                item {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Box(
-                            contentAlignment = Alignment.Center,
-                            modifier = Modifier
-                                .size(88.dp)
-                                .clip(CircleShape)
-                                .background(iconBg)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Outlined.AccountCircle,
-                                contentDescription = null,
-                                tint = textMain.copy(alpha = 0.6f),
-                                modifier = Modifier.size(72.dp)
-                            )
-                        }
-                        Spacer(modifier = Modifier.height(14.dp))
-                        Text(
-                            text = "Hana Tanaka",
-                            color = textMain,
-                            fontSize = 22.sp,
-                            fontWeight = FontWeight.Light
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Text("♓", color = SakuraPink, fontSize = 12.sp)
-                            Text(
-                                text = "Piscis · Soñadora",
-                                color = textSub,
-                                fontSize = 13.sp
-                            )
-                        }
-                    }
+            if (uiState.isLoading) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = SakuraPink)
                 }
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding)
+                        .padding(horizontal = 20.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    item { Spacer(modifier = Modifier.height(24.dp)) }
 
-                // ── Aura dominante ─────────────────────────────────────────
-                item {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = bgCard)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                    item {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.fillMaxWidth()
                         ) {
                             Box(
                                 contentAlignment = Alignment.Center,
                                 modifier = Modifier
-                                    .size(48.dp)
+                                    .size(88.dp)
                                     .clip(CircleShape)
-                                    .background(SakuraPink.copy(alpha = 0.2f))
+                                    .background(iconBg)
                             ) {
-                                Text("✦", color = SakuraPink, fontSize = 20.sp)
-                            }
-                            Spacer(modifier = Modifier.width(14.dp))
-                            Column {
-                                Text(
-                                    text = "AURA ESPIRITUAL DOMINANTE",
-                                    color = textSub,
-                                    fontSize = 10.sp,
-                                    letterSpacing = 1.sp
+                                Icon(
+                                    imageVector = Icons.Outlined.AccountCircle,
+                                    contentDescription = null,
+                                    tint = textMain.copy(alpha = 0.6f),
+                                    modifier = Modifier.size(72.dp)
                                 )
-                                Spacer(modifier = Modifier.height(4.dp))
+                            }
+                            Spacer(modifier = Modifier.height(14.dp))
+                            Text(
+                                text = uiState.user?.nombreCompleto ?: "Usuario",
+                                color = textMain,
+                                fontSize = 22.sp,
+                                fontWeight = FontWeight.Light
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Text("✦", color = SakuraPink, fontSize = 12.sp)
                                 Text(
-                                    text = "Rosa Cuarzo",
-                                    color = textMain,
-                                    fontSize = 18.sp,
-                                    fontWeight = FontWeight.Light
+                                    text = uiState.user?.nombreEspiritual
+                                        ?: uiState.user?.signoZodiacal
+                                        ?: "Buscador espiritual",
+                                    color = textSub,
+                                    fontSize = 13.sp
                                 )
                             }
                         }
                     }
-                }
 
-                // ── Stats ──────────────────────────────────────────────────
-                item {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = bgCard)
-                    ) {
-                        Row(
+                    uiState.user?.let { user ->
+                        item {
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(16.dp),
+                                colors = CardDefaults.cardColors(containerColor = bgCard)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(16.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Box(
+                                        contentAlignment = Alignment.Center,
+                                        modifier = Modifier
+                                            .size(48.dp)
+                                            .clip(CircleShape)
+                                            .background(SakuraPink.copy(alpha = 0.2f))
+                                    ) {
+                                        Text("✦", color = SakuraPink, fontSize = 20.sp)
+                                    }
+                                    Spacer(modifier = Modifier.width(14.dp))
+                                    Column {
+                                        Text(
+                                            text = "AURA ESPIRITUAL DOMINANTE",
+                                            color = textSub,
+                                            fontSize = 10.sp,
+                                            letterSpacing = 1.sp
+                                        )
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(
+                                            text = uiState.stats?.auraDominante ?: "Descubriendo...",
+                                            color = textMain,
+                                            fontSize = 18.sp,
+                                            fontWeight = FontWeight.Light
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    item {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.cardColors(containerColor = bgCard)
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 20.dp),
+                                horizontalArrangement = Arrangement.SpaceEvenly
+                            ) {
+                                StatItem(
+                                    value = uiState.stats?.bpmPromedio?.toInt()?.toString() ?: "--",
+                                    label = "BPM medio",
+                                    textMain, textSub
+                                )
+                                Box(modifier = Modifier.width(1.dp).height(36.dp).background(divider))
+                                StatItem(
+                                    value = uiState.stats?.nivelEstresPromedio?.let {
+                                        when {
+                                            it < 30 -> "Bajo"
+                                            it < 60 -> "Medio"
+                                            else -> "Alto"
+                                        }
+                                    } ?: "--",
+                                    label = "Estrés",
+                                    textMain, textSub
+                                )
+                                Box(modifier = Modifier.width(1.dp).height(36.dp).background(divider))
+                                StatItem(
+                                    value = uiState.stats?.sesionesTotales?.toString() ?: "--",
+                                    label = "Sesiones",
+                                    textMain, textSub
+                                )
+                            }
+                        }
+                    }
+
+                    item {
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            SettingsRow(
+                                icon = if (isLight) Icons.Outlined.DarkMode
+                                else Icons.Outlined.LightMode,
+                                label = if (isLight) "Tema Oscuro" else "Tema Claro",
+                                textColor = textMain,
+                                iconBg = iconBg,
+                                onClick = { themeViewModel.toggleTheme() }
+                            )
+                            SettingsRow(
+                                icon = Icons.Outlined.Hardware,
+                                label = "Ajustes de Hardware",
+                                textColor = textMain,
+                                iconBg = iconBg,
+                                onClick = {}
+                            )
+                            SettingsRow(
+                                icon = Icons.Outlined.AccountCircle,
+                                label = "Cuenta",
+                                textColor = textMain,
+                                iconBg = iconBg,
+                                onClick = {}
+                            )
+                        }
+                    }
+
+                    item {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Button(
+                            onClick = {
+                                profileViewModel.logout()
+                                navController.navigate(SakuraRoutes.AUTH) {
+                                    popUpTo(0) { inclusive = true }
+                                    launchSingleTop = true
+                                }
+                            },
+                            enabled = !uiState.isLoggingOut,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = 20.dp),
-                            horizontalArrangement = Arrangement.SpaceEvenly
+                                .height(50.dp),
+                            shape = RoundedCornerShape(50.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF2A1A1A),
+                                contentColor = Color(0xFFE74C3C)
+                            )
                         ) {
-                            StatItem("72", "BPM medio", textMain, textSub)
-                            Box(modifier = Modifier.width(1.dp).height(36.dp).background(divider))
-                            StatItem("Bajo", "Estrés", textMain, textSub)
-                            Box(modifier = Modifier.width(1.dp).height(36.dp).background(divider))
-                            StatItem("28", "Sesiones", textMain, textSub)
+                            Text(
+                                text = if (uiState.isLoggingOut) "Cerrando sesión..." else "Cerrar sesión",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium
+                            )
                         }
                     }
-                }
 
-                // ── Opciones ───────────────────────────────────────────────
-                item {
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        // Botón de tema — cambia ícono y texto dinámicamente
-                        SettingsRow(
-                            icon = if (isLight) Icons.Outlined.DarkMode
-                            else Icons.Outlined.LightMode,
-                            label = if (isLight) "Tema Oscuro" else "Tema Claro",
-                            textColor = textMain,
-                            iconBg = iconBg,
-                            onClick = { themeViewModel.toggleTheme() }
-                        )
-                        SettingsRow(
-                            icon = Icons.Outlined.Hardware,
-                            label = "Ajustes de Hardware",
-                            textColor = textMain,
-                            iconBg = iconBg,
-                            onClick = {}
-                        )
-                        SettingsRow(
-                            icon = Icons.Outlined.AccountCircle,
-                            label = "Cuenta",
-                            textColor = textMain,
-                            iconBg = iconBg,
-                            onClick = {}
-                        )
-                    }
+                    item { Spacer(modifier = Modifier.height(8.dp)) }
                 }
-
-                // ── Cerrar sesión ──────────────────────────────────────────
-                item {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Button(
-                        onClick = {
-                            // Navega a AUTH y limpia todo el back stack
-                            navController.navigate(SakuraRoutes.AUTH) {
-                                popUpTo(0) { inclusive = true }
-                                launchSingleTop = true
-                            }
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(50.dp),
-                        shape = RoundedCornerShape(50.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF2A1A1A),
-                            contentColor = Color(0xFFE74C3C)
-                        )
-                    ) {
-                        Text(
-                            text = "Cerrar sesión",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-                }
-
-                item { Spacer(modifier = Modifier.height(8.dp)) }
             }
         }
     }
 }
 
-// ── Stat individual ────────────────────────────────────────────────────────────
 @Composable
 private fun StatItem(
     value: String,
@@ -248,7 +270,6 @@ private fun StatItem(
     }
 }
 
-// ── Fila de configuración ──────────────────────────────────────────────────────
 @Composable
 private fun SettingsRow(
     icon      : ImageVector,

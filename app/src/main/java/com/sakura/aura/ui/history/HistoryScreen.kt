@@ -17,109 +17,145 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.sakura.aura.data.model.response.ReadingResponse
 import com.sakura.aura.navigation.SakuraBottomNavBar
 import com.sakura.aura.ui.components.SakuraBackground
 import com.sakura.aura.ui.theme.LocalThemeViewModel
+import com.sakura.aura.ui.theme.SakuraPink
 
-data class AuraReadingUi(
-    val id: Int, val name: String,
-    val date: String, val time: String,
-    val bpm: Int,
-    val stressLevel: String, val stressPercent: Int,
-    val color: Color, val stressColor: Color
-)
+private fun auraColorFromString(color: String): Color = when (color.lowercase()) {
+    "rojo", "roja" -> Color(0xFFE74C3C)
+    "naranja" -> Color(0xFFE67E22)
+    "amarillo", "amarilla" -> Color(0xFFF1C40F)
+    "verde" -> Color(0xFF2ECC71)
+    "azul" -> Color(0xFF5DADE2)
+    "morado", "violeta", "morada" -> Color(0xFF9B59B6)
+    "rosa" -> Color(0xFFE91E8C)
+    else -> Color(0xFFCCCCCC)
+}
 
-private val sampleReadings = listOf(
-    AuraReadingUi(1, "Aura Violeta", "17 Jun", "09:12", 68, "Bajo",  22, Color(0xFF9B59B6), Color(0xFF2ECC71)),
-    AuraReadingUi(2, "Aura Azul",    "16 Jun", "21:40", 72, "Medio", 45, Color(0xFF5DADE2), Color(0xFFF39C12)),
-    AuraReadingUi(3, "Aura Rosa",    "15 Jun", "07:55", 75, "Bajo",  18, Color(0xFFE91E8C), Color(0xFF2ECC71)),
-    AuraReadingUi(4, "Aura Rojo",    "14 Jun", "18:30", 84, "Alto",  72, Color(0xFFE74C3C), Color(0xFFE74C3C)),
-    AuraReadingUi(5, "Aura Verde",   "13 Jun", "08:05", 70, "Bajo",  15, Color(0xFF2ECC71), Color(0xFF2ECC71)),
-)
+private fun stressColor(level: Double): Color = when {
+    level < 30 -> Color(0xFF2ECC71)
+    level < 60 -> Color(0xFFF39C12)
+    else -> Color(0xFFE74C3C)
+}
+
+private fun stressLabel(level: Double): String = when {
+    level < 30 -> "Bajo"
+    level < 60 -> "Medio"
+    else -> "Alto"
+}
 
 @Composable
 fun HistoryScreen(navController: NavController) {
 
     val themeViewModel = LocalThemeViewModel.current
     val isLight by themeViewModel.isLightTheme.collectAsState()
+    val historyViewModel: HistoryViewModel = hiltViewModel()
+    val uiState by historyViewModel.uiState.collectAsState()
 
-    // ── Colores adaptativos ────────────────────────────────────────────────
     val textMain = if (isLight) Color(0xFF1A1A1A) else Color.White
     val textSub  = if (isLight) Color(0xFF666666) else Color.White.copy(alpha = 0.45f)
     val cardBg   = if (isLight) Color(0xFFFFFFFF) else Color(0xFF1A1A1A).copy(alpha = 0.85f)
 
-    var selectedReading by remember { mutableStateOf<AuraReadingUi?>(null) }
+    var selectedReading by remember { mutableStateOf<ReadingResponse?>(null) }
 
     Scaffold(
         containerColor = Color.Transparent,
         bottomBar = { SakuraBottomNavBar(navController) }
     ) { innerPadding ->
-        _root_ide_package_.com.sakura.aura.ui.components.SakuraBackground {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-                    .padding(horizontal = 20.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                item { Spacer(Modifier.height(12.dp)) }
+        SakuraBackground {
+            if (uiState.isLoading) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = SakuraPink)
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding)
+                        .padding(horizontal = 20.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    item { Spacer(Modifier.height(12.dp)) }
 
-                item {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(
-                            "Diario Energético",
-                            color = textMain,
-                            fontSize = 26.sp,
-                            fontWeight = FontWeight.Light
-                        )
-                        Spacer(Modifier.height(4.dp))
-                        Text(
-                            "Toca un aura para ver su lectura completa",
-                            color = textSub,
-                            fontSize = 12.sp
+                    item {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                "Diario Energético",
+                                color = textMain,
+                                fontSize = 26.sp,
+                                fontWeight = FontWeight.Light
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                "Toca un aura para ver su lectura completa",
+                                color = textSub,
+                                fontSize = 12.sp
+                            )
+                        }
+                    }
+
+                    item { Spacer(Modifier.height(4.dp)) }
+
+                    item {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            MetricCard(
+                                label = "BPM promedio",
+                                value = uiState.summary?.bpmPromedioGlobal?.toInt()?.toString() ?: "--",
+                                unit = "bpm",
+                                valueColor = Color(0xFFE91E8C),
+                                textSub = textSub, cardBg = cardBg,
+                                modifier = Modifier.weight(1f)
+                            )
+                            MetricCard(
+                                label = "Estrés promedio",
+                                value = uiState.summary?.nivelEstresPromedio?.toInt()?.toString() ?: "--",
+                                unit = "%",
+                                valueColor = Color(0xFF5DADE2),
+                                textSub = textSub, cardBg = cardBg,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+
+                    item { Spacer(Modifier.height(4.dp)) }
+
+                    if (uiState.readings.isEmpty()) {
+                        item {
+                            Box(
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    "Aún no hay lecturas. Realiza tu primer escaneo.",
+                                    color = textSub,
+                                    fontSize = 14.sp
+                                )
+                            }
+                        }
+                    }
+
+                    items(uiState.readings) { reading ->
+                        AuraReadingCard(
+                            reading = reading,
+                            textMain = textMain,
+                            textSub = textSub,
+                            cardBg = cardBg,
+                            onClick = { selectedReading = reading }
                         )
                     }
+
+                    item { Spacer(Modifier.height(8.dp)) }
                 }
-
-                item { Spacer(Modifier.height(4.dp)) }
-
-                item {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        MetricCard(
-                            label = "BPM promedio", value = "74", unit = "bpm",
-                            valueColor = Color(0xFFE91E8C),
-                            textSub = textSub, cardBg = cardBg,
-                            modifier = Modifier.weight(1f)
-                        )
-                        MetricCard(
-                            label = "Estrés promedio", value = "37", unit = "%",
-                            valueColor = Color(0xFF5DADE2),
-                            textSub = textSub, cardBg = cardBg,
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                }
-
-                item { Spacer(Modifier.height(4.dp)) }
-
-                items(sampleReadings) { reading ->
-                    AuraReadingCard(
-                        reading = reading,
-                        textMain = textMain,
-                        textSub = textSub,
-                        cardBg = cardBg,
-                        onClick = { selectedReading = reading }
-                    )
-                }
-
-                item { Spacer(Modifier.height(8.dp)) }
             }
         }
     }
@@ -188,12 +224,14 @@ private fun MiniChart(color: Color) {
 
 @Composable
 private fun AuraReadingCard(
-    reading  : AuraReadingUi,
+    reading  : ReadingResponse,
     textMain : Color,
     textSub  : Color,
     cardBg   : Color,
     onClick  : () -> Unit
 ) {
+    val auraColor = auraColorFromString(reading.auraDominante)
+
     Card(
         modifier = Modifier.fillMaxWidth().clickable { onClick() },
         shape = RoundedCornerShape(16.dp),
@@ -208,18 +246,25 @@ private fun AuraReadingCard(
                 modifier = Modifier
                     .size(46.dp)
                     .clip(CircleShape)
-                    .background(reading.color)
+                    .background(auraColor)
             )
             Spacer(Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(reading.name, color = textMain, fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                Text("Aura ${reading.auraDominante}", color = textMain, fontSize = 15.sp, fontWeight = FontWeight.Medium)
                 Spacer(Modifier.height(3.dp))
-                Text("${reading.date} · ${reading.time}", color = textSub, fontSize = 12.sp)
+                Text(
+                    "${reading.fechaInicio.take(10)} · ${reading.fechaInicio.substring(11, 16)}",
+                    color = textSub, fontSize = 12.sp
+                )
             }
             Column(horizontalAlignment = Alignment.End) {
-                Text("${reading.bpm} bpm", color = textMain, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                Text("${reading.bpmPromedio.toInt()} bpm", color = textMain, fontSize = 14.sp, fontWeight = FontWeight.Medium)
                 Spacer(Modifier.height(3.dp))
-                Text(reading.stressLevel, color = reading.stressColor, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                Text(
+                    stressLabel(reading.nivelEstres),
+                    color = stressColor(reading.nivelEstres),
+                    fontSize = 13.sp, fontWeight = FontWeight.SemiBold
+                )
             }
         }
     }

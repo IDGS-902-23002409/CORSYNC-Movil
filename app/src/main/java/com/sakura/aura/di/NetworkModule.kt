@@ -6,6 +6,15 @@ import androidx.security.crypto.MasterKey
 import com.sakura.aura.data.remote.ApiService
 import com.sakura.aura.data.remote.RetrofitClient
 import com.sakura.aura.data.remote.SignalRService
+import com.sakura.aura.data.remote.TokenManager
+import com.sakura.aura.data.repository.AuthRepositoryImpl
+import com.sakura.aura.data.repository.ChallengesRepositoryImpl
+import com.sakura.aura.data.repository.ReadingsRepositoryImpl
+import com.sakura.aura.data.repository.UserRepositoryImpl
+import com.sakura.aura.domain.repository.AuthRepository
+import com.sakura.aura.domain.repository.ChallengesRepository
+import com.sakura.aura.domain.repository.ReadingsRepository
+import com.sakura.aura.domain.repository.UserRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -35,13 +44,33 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideApiService(prefs: EncryptedSharedPreferences): ApiService {
-        return RetrofitClient.create(
-            tokenProvider = { prefs.getString("jwt_token", null) }
-        )
+    fun provideTokenManager(prefs: EncryptedSharedPreferences): TokenManager {
+        return TokenManager(prefs)
+    }
+
+    @Provides
+    @Singleton
+    fun provideApiService(tokenManager: TokenManager): ApiService {
+        return RetrofitClient.create(tokenManager)
     }
 
     @Provides
     @Singleton
     fun provideSignalRService(): SignalRService = SignalRService()
+
+    @Provides
+    @Singleton
+    fun provideAuthRepository(impl: AuthRepositoryImpl): AuthRepository = impl
+
+    @Provides
+    @Singleton
+    fun provideUserRepository(impl: UserRepositoryImpl): UserRepository = impl
+
+    @Provides
+    @Singleton
+    fun provideReadingsRepository(impl: ReadingsRepositoryImpl): ReadingsRepository = impl
+
+    @Provides
+    @Singleton
+    fun provideChallengesRepository(impl: ChallengesRepositoryImpl): ChallengesRepository = impl
 }
