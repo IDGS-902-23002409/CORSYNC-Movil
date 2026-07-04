@@ -1,5 +1,6 @@
 package com.sakura.aura.ui.profile
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -11,6 +12,9 @@ import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.Hardware
 import androidx.compose.material.icons.outlined.LightMode
 import androidx.compose.material.icons.outlined.DarkMode
+import androidx.compose.material.icons.outlined.Fingerprint
+import androidx.compose.material.icons.outlined.Visibility
+import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -18,13 +22,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.fragment.app.FragmentActivity
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.sakura.aura.navigation.SakuraBottomNavBar
 import com.sakura.aura.navigation.SakuraRoutes
+import com.sakura.aura.security.BiometricPromptHelper
 import com.sakura.aura.ui.components.SakuraBackground
 import com.sakura.aura.ui.theme.LocalThemeViewModel
 import com.sakura.aura.ui.theme.SakuraPink
@@ -37,6 +46,53 @@ fun ProfileScreen(
     val isLight by themeViewModel.isLightTheme.collectAsState()
     val profileViewModel: ProfileViewModel = hiltViewModel()
     val uiState by profileViewModel.uiState.collectAsState()
+
+    val context = LocalContext.current
+    val activity = context as? FragmentActivity
+    var showPasswordDialog by remember { mutableStateOf(false) }
+    var enteredPassword by remember { mutableStateOf("") }
+
+    // Observar éxito de verificación de contraseña para gatillar la huella digital
+    LaunchedEffect(uiState.passwordSuccess) {
+        if (uiState.passwordSuccess && activity != null) {
+            try {
+                val cipher = profileViewModel.getCipherForEncryption()
+                BiometricPromptHelper.showBiometricPrompt(
+                    activity = activity,
+                    title = "Activar Huella Digital",
+                    subtitle = "Escanea tu huella para confirmar la activación",
+                    negativeButtonText = "Cancelar",
+                    cipher = cipher,
+                    onSuccess = { result ->
+                        val authenticatedCipher = result.cryptoObject?.cipher
+                        if (authenticatedCipher != null) {
+                            profileViewModel.enableBiometric(authenticatedCipher, enteredPassword)
+                            Toast.makeText(context, "Huella digital activada correctamente", Toast.LENGTH_SHORT).show()
+                        } else {
+                            Toast.makeText(context, "Error al activar la huella", Toast.LENGTH_SHORT).show()
+                        }
+                        showPasswordDialog = false
+                        enteredPassword = ""
+                        profileViewModel.clearPasswordVerificationState()
+                    },
+                    onError = { code, err ->
+                        Toast.makeText(context, "Error: $err", Toast.LENGTH_SHORT).show()
+                        showPasswordDialog = false
+                        enteredPassword = ""
+                        profileViewModel.clearPasswordVerificationState()
+                    },
+                    onFailed = {
+                        Toast.makeText(context, "Lectura fallida. Inténtalo de nuevo.", Toast.LENGTH_SHORT).show()
+                    }
+                )
+            } catch (e: Exception) {
+                Toast.makeText(context, "Error al inicializar biometría: ${e.message}", Toast.LENGTH_SHORT).show()
+                showPasswordDialog = false
+                enteredPassword = ""
+                profileViewModel.clearPasswordVerificationState()
+            }
+        }
+    }
 
     val bgCard    = if (isLight) Color(0xFFFFFFFF)             else Color(0xFF1A1A1A).copy(alpha = 0.85f)
     val textMain  = if (isLight) Color(0xFF1A1A1A)             else Color.White
@@ -203,6 +259,25 @@ fun ProfileScreen(
                                 iconBg = iconBg,
                                 onClick = { themeViewModel.toggleTheme() }
                             )
+                            SettingsSwitchRow(
+                                icon = Icons.Outlined.Fingerprint,
+                                label = "Iniciar sesión con huella",
+                                checked = uiState.isBiometricEnabled,
+                                textColor = textMain,
+                                iconBg = iconBg,
+                                onCheckedChange = { checked ->
+                                    if (checked) {
+                                        if (BiometricPromptHelper.isBiometricAvailable(context)) {
+                                            showPasswordDialog = true
+                                        } else {
+                                            Toast.makeText(context, "La huella digital no está disponible en este dispositivo.", Toast.LENGTH_LONG).show()
+                                        }
+                                    } else {
+                                        profileViewModel.disableBiometric()
+                                        Toast.makeText(context, "Inicio biométrico desactivado", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            )
                             SettingsRow(
                                 icon = Icons.Outlined.Hardware,
                                 label = "Ajustes de Hardware",
@@ -252,6 +327,89 @@ fun ProfileScreen(
                 }
             }
         }
+    }
+
+    if (showPasswordDialog) {
+        var password by remember { mutableStateOf("") }
+        var passwordVisible by remember { mutableStateOf(false) }
+
+        AlertDialog(
+            onDismissRequest = {
+                showPasswordDialog = false
+                profileViewModel.clearPasswordVerificationState()
+            },
+            title = { Text("Confirmar Identidad", color = textMain, fontWeight = FontWeight.SemiBold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        "Por seguridad, ingresa tu contraseña para activar el inicio de sesión con huella digital.",
+                        color = textSub,
+                        fontSize = 14.sp
+                    )
+                    OutlinedTextField(
+                        value = password,
+                        onValueChange = { password = it },
+                        label = { Text("Contraseña") },
+                        visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                        trailingIcon = {
+                            IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                                Icon(
+                                    imageVector = if (passwordVisible) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
+                                    contentDescription = if (passwordVisible) "Ocultar" else "Mostrar"
+                                )
+                            }
+                        },
+                        isError = uiState.passwordError != null,
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = SakuraPink,
+                            unfocusedBorderColor = textSub.copy(alpha = 0.5f),
+                            errorBorderColor = Color(0xFFE74C3C),
+                            focusedLabelColor = SakuraPink,
+                            unfocusedLabelColor = textSub,
+                            focusedTextColor = textMain,
+                            unfocusedTextColor = textMain
+                        )
+                    )
+                    if (uiState.passwordError != null) {
+                        Text(
+                            text = uiState.passwordError ?: "",
+                            color = Color(0xFFE74C3C),
+                            fontSize = 12.sp,
+                            modifier = Modifier.padding(start = 4.dp)
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        enteredPassword = password
+                        profileViewModel.verifyPassword(password)
+                    },
+                    enabled = password.isNotEmpty() && !uiState.isVerifyingPassword,
+                    colors = ButtonDefaults.buttonColors(containerColor = SakuraPink, contentColor = Color.White)
+                ) {
+                    if (uiState.isVerifyingPassword) {
+                        CircularProgressIndicator(color = Color.White, modifier = Modifier.size(18.dp))
+                    } else {
+                        Text("Confirmar")
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showPasswordDialog = false
+                        profileViewModel.clearPasswordVerificationState()
+                    }
+                ) {
+                    Text("Cancelar", color = textSub)
+                }
+            },
+            containerColor = bgCard
+        )
     }
 }
 
@@ -316,6 +474,62 @@ private fun SettingsRow(
                 contentDescription = null,
                 tint = textColor.copy(alpha = 0.3f),
                 modifier = Modifier.size(20.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun SettingsSwitchRow(
+    icon      : ImageVector,
+    label     : String,
+    checked   : Boolean,
+    textColor : Color,
+    iconBg    : Color,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (textColor == Color(0xFF1A1A1A))
+                Color(0xFFFFFFFF) else Color(0xFF1A1A1A).copy(alpha = 0.85f)
+        )
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(iconBg)
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = textColor.copy(alpha = 0.7f),
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+            Spacer(modifier = Modifier.width(14.dp))
+            Text(
+                text = label,
+                color = textColor,
+                fontSize = 15.sp,
+                modifier = Modifier.weight(1f)
+            )
+            Switch(
+                checked = checked,
+                onCheckedChange = onCheckedChange,
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = SakuraPink,
+                    checkedTrackColor = SakuraPink.copy(alpha = 0.4f),
+                    uncheckedThumbColor = textColor.copy(alpha = 0.4f),
+                    uncheckedTrackColor = iconBg
+                )
             )
         }
     }

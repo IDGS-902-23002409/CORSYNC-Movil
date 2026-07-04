@@ -1,5 +1,6 @@
 package com.sakura.aura.ui.auth
 
+import android.widget.Toast
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -17,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -24,7 +26,9 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.fragment.app.FragmentActivity
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.sakura.aura.security.BiometricPromptHelper
 import com.sakura.aura.ui.components.SakuraBackground
 import com.sakura.aura.ui.theme.SakuraPink
 
@@ -37,6 +41,47 @@ fun AuthScreen(onLoginSuccess: () -> Unit = {}) {
     val uiState by viewModel.uiState.collectAsState()
     var selectedTab by remember { mutableStateOf(AuthTab.LOGIN) }
     var registerSuccessMsg by remember { mutableStateOf(false) }
+
+    val context = LocalContext.current
+    val activity = context as? FragmentActivity
+
+    val triggerBiometrics = {
+        if (viewModel.isBiometricEnabled() && activity != null && uiState !is AuthUiState.Loading) {
+            try {
+                val cipher = viewModel.getCipherForDecryption()
+                if (cipher != null) {
+                    BiometricPromptHelper.showBiometricPrompt(
+                        activity = activity,
+                        title = "Iniciar Sesión",
+                        subtitle = "Escanea tu huella para acceder a CorSync",
+                        negativeButtonText = "Cancelar",
+                        cipher = cipher,
+                        onSuccess = { result ->
+                            val authenticatedCipher = result.cryptoObject?.cipher
+                            if (authenticatedCipher != null) {
+                                viewModel.loginBiometrically(authenticatedCipher)
+                            }
+                        },
+                        onError = { code, err ->
+                            if (code != androidx.biometric.BiometricPrompt.ERROR_USER_CANCELED &&
+                                code != androidx.biometric.BiometricPrompt.ERROR_NEGATIVE_BUTTON) {
+                                Toast.makeText(context, "Error biometría: $err", Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        onFailed = { }
+                    )
+                }
+            } catch (e: Exception) {
+                Toast.makeText(context, "Error al iniciar biometría: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    // Auto-disparar al abrir la pantalla si está habilitado
+    LaunchedEffect(Unit) {
+        kotlinx.coroutines.delay(500)
+        triggerBiometrics()
+    }
 
     LaunchedEffect(uiState) {
         if (uiState is AuthUiState.Success) {
@@ -122,6 +167,8 @@ fun AuthScreen(onLoginSuccess: () -> Unit = {}) {
             when (selectedTab) {
                 AuthTab.LOGIN -> LoginForm(
                     isLoading = uiState is AuthUiState.Loading,
+                    isBiometricEnabled = viewModel.isBiometricEnabled(),
+                    onBiometricClick = { triggerBiometrics() },
                     onLogin   = { user, pass -> viewModel.login(user, pass) }
                 )
                 AuthTab.REGISTER -> RegisterForm(
@@ -202,7 +249,12 @@ private fun AuthTabSelector(selected: AuthTab, onSelect: (AuthTab) -> Unit) {
 
 // ── Login Form ────────────────────────────────────────────────────────────────
 @Composable
-private fun LoginForm(isLoading: Boolean, onLogin: (String, String) -> Unit) {
+private fun LoginForm(
+    isLoading: Boolean,
+    isBiometricEnabled: Boolean,
+    onBiometricClick: () -> Unit,
+    onLogin: (String, String) -> Unit
+) {
     var username        by remember { mutableStateOf("") }
     var password        by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
@@ -240,10 +292,36 @@ private fun LoginForm(isLoading: Boolean, onLogin: (String, String) -> Unit) {
 
         Spacer(Modifier.height(8.dp))
 
-        SakuraButton(
-            text    = if (isLoading) "Iniciando..." else "Iniciar Sesión",
-            onClick = { if (!isLoading) onLogin(username, password) }
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(modifier = Modifier.weight(1f)) {
+                SakuraButton(
+                    text    = if (isLoading) "Iniciando..." else "Iniciar Sesión",
+                    onClick = { if (!isLoading) onLogin(username, password) }
+                )
+            }
+            if (isBiometricEnabled) {
+                IconButton(
+                    onClick = onBiometricClick,
+                    modifier = Modifier
+                        .size(54.dp)
+                        .clip(RoundedCornerShape(50.dp))
+                        .background(Color.White),
+                    colors = IconButtonDefaults.iconButtonColors(
+                        contentColor = Color(0xFF1A1A1A)
+                    )
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Fingerprint,
+                        contentDescription = "Iniciar sesión con huella",
+                        modifier = Modifier.size(26.dp)
+                    )
+                }
+            }
+        }
     }
 }
 

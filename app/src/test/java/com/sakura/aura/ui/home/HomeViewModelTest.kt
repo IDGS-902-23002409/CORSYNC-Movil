@@ -1,6 +1,7 @@
 package com.sakura.aura.ui.home
 
 import com.sakura.aura.domain.model.Telemetry
+import com.sakura.aura.domain.usecase.SaveReadingUseCase
 import com.sakura.aura.domain.usecase.ScanAuraUseCase
 import io.mockk.*
 import io.mockk.junit4.MockKRule
@@ -18,6 +19,7 @@ class HomeViewModelTest {
     val mockkRule = MockKRule(this)
 
     private val scanAuraUseCase: ScanAuraUseCase = mockk()
+    private val saveReadingUseCase: SaveReadingUseCase = mockk()
     private lateinit var viewModel: HomeViewModel
 
     private val _isConnected = MutableStateFlow(false)
@@ -32,7 +34,7 @@ class HomeViewModelTest {
         every { scanAuraUseCase.telemetry } returns _telemetry
         every { scanAuraUseCase.error } returns _error
 
-        viewModel = HomeViewModel(scanAuraUseCase)
+        viewModel = HomeViewModel(scanAuraUseCase, saveReadingUseCase)
     }
 
     @After

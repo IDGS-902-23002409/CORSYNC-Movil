@@ -2,11 +2,16 @@ package com.sakura.aura.ui.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.sakura.aura.data.remote.AppConfig
+import com.sakura.aura.domain.model.NewReadingData
 import com.sakura.aura.domain.model.Telemetry
+import com.sakura.aura.domain.usecase.SaveReadingUseCase
 import com.sakura.aura.domain.usecase.ScanAuraUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import java.time.Duration
+import java.time.Instant
 import javax.inject.Inject
 
 data class HomeUiState(
@@ -35,11 +40,15 @@ enum class AuraColorUi(val hex: Long, val label: String) {
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
-    private val scanAuraUseCase: ScanAuraUseCase
+    private val scanAuraUseCase: ScanAuraUseCase,
+    private val saveReadingUseCase: SaveReadingUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
+
+    private val sessionTelemetries = mutableListOf<Telemetry>()
+    private var sessionStartDate: Instant? = null
 
     init {
         viewModelScope.launch {
@@ -56,6 +65,9 @@ class HomeViewModel @Inject constructor(
                             telemetry  = telemetry,
                             auraColor  = AuraColorUi.fromString(telemetry.aura)
                         )
+                    }
+                    if (_uiState.value.isScanning) {
+                        sessionTelemetries.add(telemetry)
                     }
                 }
             }
@@ -81,6 +93,8 @@ class HomeViewModel @Inject constructor(
     }
 
     fun startScan() {
+        sessionTelemetries.clear()
+        sessionStartDate = Instant.now()
         if (!_uiState.value.isConnected) {
             connect()
         }
@@ -99,10 +113,58 @@ class HomeViewModel @Inject constructor(
             try {
                 scanAuraUseCase.stopScan()
                 _uiState.update { it.copy(isScanning = false) }
+                saveSessionReading()
             } catch (e: Exception) {
                 _uiState.update { it.copy(error = "Error al detener: ${e.message}") }
             }
         }
+    }
+
+    private fun saveSessionReading() {
+        val endDate = Instant.now()
+        val startDate = sessionStartDate ?: endDate.minusSeconds(10)
+        val durationSeconds = Duration.between(startDate, endDate).seconds.toInt().coerceAtLeast(1)
+
+        if (sessionTelemetries.isNotEmpty()) {
+            val avgBpm = sessionTelemetries.map { it.bpm }.average()
+            val maxBpm = sessionTelemetries.map { it.bpm }.maxOrNull() ?: avgBpm
+            val minBpm = sessionTelemetries.map { it.bpm }.minOrNull() ?: avgBpm
+            val avgGsrRaw = sessionTelemetries.map { it.gsrRaw }.average().toInt()
+            val avgGsrVoltage = sessionTelemetries.map { it.gsrVoltage }.average()
+
+            val dominantAura = sessionTelemetries.map { it.aura }
+                .groupBy { it }
+                .maxByOrNull { it.value.size }
+                ?.key ?: "Neutral"
+
+            // Stress level formula: based on avgBpm and avgGsrVoltage
+            val bpmPart = ((avgBpm - 50.0) / 100.0).coerceIn(0.0, 1.0) * 40.0
+            val gsrPart = (avgGsrVoltage / 3.3).coerceIn(0.0, 1.0) * 60.0
+            val calculatedStress = (bpmPart + gsrPart).coerceIn(10.0, 95.0)
+
+            val newReading = NewReadingData(
+                deviceId = AppConfig.DEVICE_ID,
+                avgBpm = avgBpm,
+                maxBpm = maxBpm,
+                minBpm = minBpm,
+                avgGsrRaw = avgGsrRaw,
+                avgGsrVoltage = avgGsrVoltage,
+                stressLevel = calculatedStress,
+                dominantAura = dominantAura,
+                notes = "Sesión de escaneo de aura",
+                durationSeconds = durationSeconds,
+                startDate = startDate.toString(),
+                endDate = endDate.toString()
+            )
+
+            viewModelScope.launch {
+                saveReadingUseCase(newReading).onFailure { e ->
+                    _uiState.update { it.copy(error = "Error al guardar sesión: ${e.message}") }
+                }
+            }
+        }
+        sessionTelemetries.clear()
+        sessionStartDate = null
     }
 
     fun clearError() {
@@ -111,6 +173,9 @@ class HomeViewModel @Inject constructor(
 
     override fun onCleared() {
         super.onCleared()
+        if (_uiState.value.isScanning) {
+            saveSessionReading()
+        }
         scanAuraUseCase.disconnect()
     }
 }
