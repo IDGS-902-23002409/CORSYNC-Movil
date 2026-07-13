@@ -60,6 +60,8 @@ fun AuthScreen(onLoginSuccess: () -> Unit = {}) {
                             val authenticatedCipher = result.cryptoObject?.cipher
                             if (authenticatedCipher != null) {
                                 viewModel.loginBiometrically(authenticatedCipher)
+                            } else {
+                                Toast.makeText(context, "Error: no se pudo obtener el cifrado biométrico", Toast.LENGTH_SHORT).show()
                             }
                         },
                         onError = { code, err ->
@@ -70,6 +72,8 @@ fun AuthScreen(onLoginSuccess: () -> Unit = {}) {
                         },
                         onFailed = { }
                     )
+                } else {
+                    Toast.makeText(context, "Error: credenciales biométricas no encontradas. Vuelve a configurar la huella.", Toast.LENGTH_LONG).show()
                 }
             } catch (e: Exception) {
                 Toast.makeText(context, "Error al iniciar biometría: ${e.message}", Toast.LENGTH_SHORT).show()

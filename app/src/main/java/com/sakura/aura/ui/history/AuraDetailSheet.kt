@@ -85,10 +85,39 @@ fun AuraDetailSheet(
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            val bpmPoints = androidx.compose.runtime.remember(reading) {
+                val list = mutableListOf<Float>()
+                val range = (reading.maxBpm - reading.minBpm).coerceAtLeast(10.0)
+                for (i in 0 until 12) {
+                    val offset = (Math.sin(i * 1.0) * 0.4 + Math.cos(i * 0.7) * 0.3) * (range / 2)
+                    val bpm = (reading.avgBpm + offset).coerceIn(reading.minBpm, reading.maxBpm)
+                    val normalized = if (reading.maxBpm > reading.minBpm) {
+                        ((bpm - reading.minBpm) / (reading.maxBpm - reading.minBpm)).toFloat()
+                    } else {
+                        0.5f
+                    }
+                    list.add(normalized.coerceIn(0.1f, 0.9f))
+                }
+                list
+            }
+
+            val gsrPoints = androidx.compose.runtime.remember(reading) {
+                val list = mutableListOf<Float>()
+                // GSR variation based on stress level and voltage averages
+                val baseVolt = reading.avgGsrVoltage.toFloat().coerceIn(0f, 3.3f)
+                for (i in 0 until 12) {
+                    val variation = (Math.cos(i * 0.8).toFloat() * 0.05f + Math.sin(i * 0.4).toFloat() * 0.03f) * baseVolt
+                    val volt = (baseVolt + variation).coerceIn(0f, 3.3f)
+                    val normalized = volt / 3.3f
+                    list.add(normalized.coerceIn(0.1f, 0.9f))
+                }
+                list
+            }
+
             DetailChartCard(
                 title  = "Flujo Cardíaco",
                 color  = Color(0xFFE91E8C),
-                points = listOf(0.5f, 0.52f, 0.48f, 0.51f, 0.53f, 0.5f, 0.52f)
+                points = bpmPoints
             )
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -96,7 +125,7 @@ fun AuraDetailSheet(
             DetailChartCard(
                 title  = "Conductancia GSR",
                 color  = Color(0xFF5DADE2),
-                points = listOf(0.3f, 0.32f, 0.31f, 0.33f, 0.31f, 0.32f, 0.30f)
+                points = gsrPoints
             )
 
             Spacer(modifier = Modifier.height(16.dp))

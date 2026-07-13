@@ -102,6 +102,10 @@ dependencies {
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
     implementation("androidx.biometric:biometric:1.2.0-alpha05")
 
+    // ── Vico Charts ───────────────────────────────────────────────────────
+    implementation("com.patrykandpatrick.vico:compose:2.0.0-alpha.20")
+    implementation("com.patrykandpatrick.vico:compose-m3:2.0.0-alpha.20")
+
 
     // ═══════════════════════════════════════════════════════════════════════
     //  TESTS UNITARIOS (test/)

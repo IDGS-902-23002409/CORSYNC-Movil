@@ -15,6 +15,10 @@ import com.sakura.aura.domain.repository.AuthRepository
 import com.sakura.aura.domain.repository.ChallengesRepository
 import com.sakura.aura.domain.repository.ReadingsRepository
 import com.sakura.aura.domain.repository.UserRepository
+import com.sakura.aura.data.repository.AnalyticsRepositoryImpl
+import com.sakura.aura.data.repository.RecommendationsRepositoryImpl
+import com.sakura.aura.domain.repository.AnalyticsRepository
+import com.sakura.aura.domain.repository.RecommendationsRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -33,13 +37,24 @@ object NetworkModule {
             .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
             .build()
 
-        return EncryptedSharedPreferences.create(
-            context,
-            "corsync_secure_prefs",
-            masterKey,
-            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-        ) as EncryptedSharedPreferences
+        return try {
+            EncryptedSharedPreferences.create(
+                context,
+                "corsync_secure_prefs",
+                masterKey,
+                EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+            ) as EncryptedSharedPreferences
+        } catch (e: Exception) {
+            context.deleteSharedPreferences("corsync_secure_prefs")
+            EncryptedSharedPreferences.create(
+                context,
+                "corsync_secure_prefs",
+                masterKey,
+                EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+            ) as EncryptedSharedPreferences
+        }
     }
 
     @Provides
@@ -73,4 +88,12 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideChallengesRepository(impl: ChallengesRepositoryImpl): ChallengesRepository = impl
+
+    @Provides
+    @Singleton
+    fun provideAnalyticsRepository(impl: AnalyticsRepositoryImpl): AnalyticsRepository = impl
+
+    @Provides
+    @Singleton
+    fun provideRecommendationsRepository(impl: RecommendationsRepositoryImpl): RecommendationsRepository = impl
 }

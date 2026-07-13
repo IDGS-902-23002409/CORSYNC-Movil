@@ -27,7 +27,6 @@ object RetrofitClient {
                         }
                         addHeader("Accept", "application/json")
                         addHeader("Content-Type", "application/json")
-                        addHeader("Connection", "close")
                     }
                     .method(original.method, original.body)
                     .build()
@@ -69,7 +68,6 @@ object RetrofitClient {
                                     }
                                     addHeader("Accept", "application/json")
                                     addHeader("Content-Type", "application/json")
-                                    addHeader("Connection", "close")
                                 }
                                 .method(original.method, original.body)
                                 .build()

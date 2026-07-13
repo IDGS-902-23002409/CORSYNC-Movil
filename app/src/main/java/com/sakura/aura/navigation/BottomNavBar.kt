@@ -2,6 +2,7 @@ package com.sakura.aura.navigation
 
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.outlined.EmojiEvents
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.MenuBook
@@ -22,6 +23,8 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 object SakuraRoutes {
     const val AUTH    = "auth"
     const val HOME    = "home"
+    const val ANALYTICS = "analytics"
+    const val RECOMMENDATIONS = "recommendations"
     const val HISTORY = "history"
     const val CHALLENGES = "challenges"
     const val PROFILE = "profile"
@@ -35,10 +38,11 @@ data class BottomNavItem(
 )
 
 val bottomNavItems = listOf(
-    BottomNavItem("Inicio",    SakuraRoutes.HOME,       Icons.Outlined.Home),
-    BottomNavItem("Historial", SakuraRoutes.HISTORY,    Icons.Outlined.MenuBook),
-    BottomNavItem("Desafíos",  SakuraRoutes.CHALLENGES, Icons.Outlined.EmojiEvents),
-    BottomNavItem("Perfil",    SakuraRoutes.PROFILE,    Icons.Outlined.Person),
+    BottomNavItem("Inicio",      SakuraRoutes.HOME,       Icons.Outlined.Home),
+    BottomNavItem("Analíticas",  SakuraRoutes.ANALYTICS,  Icons.Outlined.BarChart),
+    BottomNavItem("Historial",   SakuraRoutes.HISTORY,    Icons.Outlined.MenuBook),
+    BottomNavItem("Desafíos",    SakuraRoutes.CHALLENGES, Icons.Outlined.EmojiEvents),
+    BottomNavItem("Perfil",      SakuraRoutes.PROFILE,    Icons.Outlined.Person),
 )
 
 // ── Componente BottomNavBar ────────────────────────────────────────────────────

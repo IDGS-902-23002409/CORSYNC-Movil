@@ -38,4 +38,17 @@ class ChallengesRepositoryImpl @Inject constructor(
             Result.failure(e)
         }
     }
+
+    override suspend fun updateChallengeProgress(id: Int, progress: Int): Result<Challenge> {
+        return try {
+            val response = apiService.updateChallengeProgress(id, com.sakura.aura.data.model.request.UpdateProgressRequest(progress))
+            if (response.isSuccessful && response.body() != null) {
+                Result.success(response.body()!!.toDomain())
+            } else {
+                Result.failure(Exception("Error al actualizar progreso del desafío"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 }

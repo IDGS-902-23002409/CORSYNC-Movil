@@ -8,18 +8,31 @@ import com.sakura.aura.domain.model.Telemetry
 import com.sakura.aura.domain.usecase.SaveReadingUseCase
 import com.sakura.aura.domain.usecase.ScanAuraUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.time.Duration
 import java.time.Instant
 import javax.inject.Inject
 
+private const val SCAN_DURATION_SECONDS = 20L
+
 data class HomeUiState(
     val isConnected  : Boolean       = false,
+    val isConnecting : Boolean       = false,
     val isScanning   : Boolean       = false,
     val telemetry    : Telemetry?    = null,
     val auraColor    : AuraColorUi   = AuraColorUi.NEUTRAL,
+    val scanResult   : ScanResult?   = null,
     val error        : String?       = null
+)
+
+data class ScanResult(
+    val auraColor: AuraColorUi,
+    val avgBpm: Double,
+    val dominantAura: String,
+    val stressLevel: Double
 )
 
 enum class AuraColorUi(val hex: Long, val label: String) {
@@ -49,6 +62,7 @@ class HomeViewModel @Inject constructor(
 
     private val sessionTelemetries = mutableListOf<Telemetry>()
     private var sessionStartDate: Instant? = null
+    private var autoStopJob: Job? = null
 
     init {
         viewModelScope.launch {
@@ -68,6 +82,9 @@ class HomeViewModel @Inject constructor(
                     }
                     if (_uiState.value.isScanning) {
                         sessionTelemetries.add(telemetry)
+                        if (sessionTelemetries.size == 2) {
+                            startAutoStopTimer()
+                        }
                     }
                 }
             }
@@ -93,22 +110,27 @@ class HomeViewModel @Inject constructor(
     }
 
     fun startScan() {
+        autoStopJob?.cancel()
         sessionTelemetries.clear()
         sessionStartDate = Instant.now()
-        if (!_uiState.value.isConnected) {
-            connect()
-        }
+        _uiState.update { it.copy(scanResult = null) }
         viewModelScope.launch {
+            _uiState.update { it.copy(isConnecting = true) }
             try {
+                if (!_uiState.value.isConnected) {
+                    scanAuraUseCase.connect()
+                }
                 scanAuraUseCase.startScan()
-                _uiState.update { it.copy(isScanning = true, error = null) }
+                _uiState.update { it.copy(isScanning = true, isConnecting = false, error = null) }
             } catch (e: Exception) {
-                _uiState.update { it.copy(error = "Error al iniciar: ${e.message}") }
+                _uiState.update { it.copy(isConnecting = false, error = "Error al iniciar: ${e.message}") }
             }
         }
     }
 
     fun stopScan() {
+        autoStopJob?.cancel()
+        autoStopJob = null
         viewModelScope.launch {
             try {
                 scanAuraUseCase.stopScan()
@@ -117,6 +139,14 @@ class HomeViewModel @Inject constructor(
             } catch (e: Exception) {
                 _uiState.update { it.copy(error = "Error al detener: ${e.message}") }
             }
+        }
+    }
+
+    private fun startAutoStopTimer() {
+        autoStopJob?.cancel()
+        autoStopJob = viewModelScope.launch {
+            delay(SCAN_DURATION_SECONDS * 1000L)
+            stopScan()
         }
     }
 
@@ -137,10 +167,21 @@ class HomeViewModel @Inject constructor(
                 .maxByOrNull { it.value.size }
                 ?.key ?: "Neutral"
 
-            // Stress level formula: based on avgBpm and avgGsrVoltage
             val bpmPart = ((avgBpm - 50.0) / 100.0).coerceIn(0.0, 1.0) * 40.0
             val gsrPart = (avgGsrVoltage / 3.3).coerceIn(0.0, 1.0) * 60.0
             val calculatedStress = (bpmPart + gsrPart).coerceIn(10.0, 95.0)
+
+            val auraColor = AuraColorUi.fromString(dominantAura)
+
+            _uiState.update { it.copy(
+                scanResult = ScanResult(
+                    auraColor = auraColor,
+                    avgBpm = avgBpm,
+                    dominantAura = dominantAura,
+                    stressLevel = calculatedStress
+                ),
+                auraColor = auraColor
+            ) }
 
             val newReading = NewReadingData(
                 deviceId = AppConfig.DEVICE_ID,
@@ -171,8 +212,13 @@ class HomeViewModel @Inject constructor(
         _uiState.update { it.copy(error = null) }
     }
 
+    fun resetScan() {
+        _uiState.update { it.copy(scanResult = null) }
+    }
+
     override fun onCleared() {
         super.onCleared()
+        autoStopJob?.cancel()
         if (_uiState.value.isScanning) {
             saveSessionReading()
         }

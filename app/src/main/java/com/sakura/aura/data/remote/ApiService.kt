@@ -13,6 +13,8 @@ import com.sakura.aura.data.model.response.ReadingResponse
 import com.sakura.aura.data.model.response.ReadingSummaryResponse
 import com.sakura.aura.data.model.response.UserResponse
 import com.sakura.aura.data.model.response.UserStatsResponse
+import com.sakura.aura.data.model.request.UpdateProgressRequest
+import com.sakura.aura.data.model.response.*
 import retrofit2.Response
 import retrofit2.http.*
 
@@ -68,4 +70,27 @@ interface ApiService {
 
     @GET(ApiEndpoints.MEDALS)
     suspend fun getMedals(): Response<List<MedalResponse>>
+
+    @PUT("${ApiEndpoints.CHALLENGES}/{id}/progress")
+    suspend fun updateChallengeProgress(
+        @Path("id") id: Int,
+        @Body request: UpdateProgressRequest
+    ): Response<ChallengeResponse>
+
+    @GET(ApiEndpoints.ANALYTICS_TRENDS)
+    suspend fun getTrends(
+        @Query("period") period: String,
+        @Query("days") days: Int = 30,
+        @Query("weeks") weeks: Int = 4,
+        @Query("months") months: Int = 6
+    ): Response<TrendsResponse>
+
+    @GET(ApiEndpoints.ANALYTICS_DISTRIBUTION)
+    suspend fun getDistribution(): Response<DistributionResponse>
+
+    @GET(ApiEndpoints.ANALYTICS_COMPARISON)
+    suspend fun getComparison(): Response<ComparisonResponse>
+
+    @GET(ApiEndpoints.RECOMMENDATIONS)
+    suspend fun getRecommendations(): Response<RecommendationsPackageResponse>
 }

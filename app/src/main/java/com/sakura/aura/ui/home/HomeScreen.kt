@@ -66,8 +66,6 @@ fun HomeScreen(navController: NavController) {
     // Color del aura desde el backend
     val auraColor = Color(uiState.auraColor.hex)
 
-    // Partículas (igual que antes)
-    val particles = remember { List(18) { /* ... igual que antes ... */ } }
     val infiniteTransition = rememberInfiniteTransition(label = "aura")
     val animTime by infiniteTransition.animateFloat(
         initialValue = 0f, targetValue = 360f,
@@ -134,19 +132,31 @@ fun HomeScreen(navController: NavController) {
 
                 Spacer(Modifier.height(16.dp))
 
-                // ── Canvas ─────────────────────────────────────────────────
-                AuraCanvas(
-                    particles    = particles,
-                    animTime     = animTime,
-                    auraPulse    = auraPulse,
-                    isScanning   = uiState.isScanning,
-                    auraColor    = auraColor,
-                    irValue      = uiState.telemetry?.ir ?: 0,
-                    canvasBg     = canvasBg,
-                    canvasBorder = canvasBorder,
-                    labelColor   = labelColor,
-                    modifier     = Modifier.fillMaxWidth().weight(1f)
-                )
+                // ── Resultado o Canvas ─────────────────────────────────────
+                val result = uiState.scanResult
+                if (result != null) {
+                    AuraResultDisplay(
+                        auraColor = Color(result.auraColor.hex),
+                        auraLabel = result.auraColor.label,
+                        avgBpm    = result.avgBpm,
+                        stress    = result.stressLevel,
+                        textMain  = textMain,
+                        textSub   = textSub,
+                        modifier  = Modifier.fillMaxWidth().weight(1f)
+                    )
+                } else {
+                    AuraCanvas(
+                        animTime     = animTime,
+                        auraPulse    = auraPulse,
+                        isScanning   = uiState.isScanning,
+                        auraColor    = auraColor,
+                        irValue      = uiState.telemetry?.ir ?: 0,
+                        canvasBg     = canvasBg,
+                        canvasBorder = canvasBorder,
+                        labelColor   = labelColor,
+                        modifier     = Modifier.fillMaxWidth().weight(1f)
+                    )
+                }
 
                 // ── Error ──────────────────────────────────────────────────
                 uiState.error?.let { error ->
@@ -163,11 +173,16 @@ fun HomeScreen(navController: NavController) {
 
                 // ── Botón escaneo ──────────────────────────────────────────
                 ScanButton(
-                    isScanning = uiState.isScanning,
-                    isLight    = isLight,
-                    onClick    = {
+                    isScanning  = uiState.isScanning,
+                    isConnecting = uiState.isConnecting,
+                    hasResult   = result != null,
+                    isLight     = isLight,
+                    onClick     = {
                         if (uiState.isScanning) homeViewModel.stopScan()
-                        else homeViewModel.startScan()
+                        else if (!uiState.isConnecting) {
+                            if (result != null) homeViewModel.resetScan()
+                            homeViewModel.startScan()
+                        }
                     }
                 )
 
@@ -178,7 +193,7 @@ fun HomeScreen(navController: NavController) {
 }
 
 @Composable
-private fun ScanButton(isScanning: Boolean, isLight: Boolean, onClick: () -> Unit) {
+private fun ScanButton(isScanning: Boolean, isConnecting: Boolean, hasResult: Boolean, isLight: Boolean, onClick: () -> Unit) {
     val bgColor by animateColorAsState(
         targetValue = when {
             isScanning && isLight  -> Color(0xFF1A1A1A)
@@ -195,26 +210,116 @@ private fun ScanButton(isScanning: Boolean, isLight: Boolean, onClick: () -> Uni
 
     Button(
         onClick = onClick,
+        enabled = !isConnecting,
         modifier = Modifier.fillMaxWidth().height(54.dp),
         shape = RoundedCornerShape(50.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = bgColor,
-            contentColor   = textColor
+            contentColor   = textColor,
+            disabledContainerColor = bgColor.copy(alpha = 0.5f),
+            disabledContentColor = textColor.copy(alpha = 0.5f)
         )
     ) {
-        Icon(Icons.Outlined.AutoAwesome, null, Modifier.size(18.dp))
-        Spacer(Modifier.width(10.dp))
-        Text(
-            text = if (isScanning) "Detener Escaneo" else "Iniciar Escaneo de Energía",
-            fontWeight = FontWeight.SemiBold,
-            fontSize = 15.sp
-        )
+        if (isConnecting) {
+            CircularProgressIndicator(
+                color = Color.White,
+                modifier = Modifier.size(18.dp),
+                strokeWidth = 2.dp
+            )
+            Spacer(Modifier.width(10.dp))
+            Text(
+                text = "Conectando...",
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 15.sp
+            )
+        } else {
+            val label = when {
+                isScanning -> "Detener Escaneo"
+                hasResult  -> "Escanear de Nuevo"
+                else       -> "Iniciar Escaneo de Energía"
+            }
+            Icon(Icons.Outlined.AutoAwesome, null, Modifier.size(18.dp))
+            Spacer(Modifier.width(10.dp))
+            Text(
+                text = label,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 15.sp
+            )
+        }
+    }
+}
+
+@Composable
+private fun AuraResultDisplay(
+    auraColor: Color,
+    auraLabel: String,
+    avgBpm: Double,
+    stress: Double,
+    textMain: Color,
+    textSub: Color,
+    modifier: Modifier
+) {
+    val stressLabel = when {
+        stress < 30 -> "Bajo"
+        stress < 60 -> "Medio"
+        else        -> "Alto"
+    }
+    val stressColor = when {
+        stress < 30 -> Color(0xFF2ECC71)
+        stress < 60 -> Color(0xFFF1C40F)
+        else        -> Color(0xFFE74C3C)
+    }
+
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = modifier.padding(16.dp)
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text("✦", fontSize = 64.sp, color = auraColor)
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = "Tu Aura es $auraLabel",
+                color = auraColor,
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Light
+            )
+            Spacer(Modifier.height(24.dp))
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(32.dp)
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("♥", color = Color(0xFFE91E8C), fontSize = 18.sp)
+                    Text(
+                        text = "${avgBpm.toInt()}",
+                        color = textMain,
+                        fontSize = 28.sp,
+                        fontWeight = FontWeight.Light
+                    )
+                    Text("bpm", color = textSub, fontSize = 11.sp)
+                }
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("⏱", color = stressColor, fontSize = 18.sp)
+                    Text(
+                        text = stressLabel,
+                        color = stressColor,
+                        fontSize = 28.sp,
+                        fontWeight = FontWeight.Light
+                    )
+                    Text("estrés", color = textSub, fontSize = 11.sp)
+                }
+            }
+            Spacer(Modifier.height(16.dp))
+            Text(
+                text = "Respira profundo. Tu energía está en armonía.",
+                color = textSub,
+                fontSize = 13.sp
+            )
+        }
     }
 }
 
 @Composable
 fun AuraCanvas(
-    particles: List<Unit>,
     animTime: Float,
     auraPulse: Float,
     isScanning: Boolean,
@@ -236,7 +341,8 @@ fun AuraCanvas(
                 phase  = Random.nextFloat() * 360f
             )
         }
-    }}
+    }
+}
 
 // ── BPM en tiempo real ────────────────────────────────────────────────────────
 @Composable

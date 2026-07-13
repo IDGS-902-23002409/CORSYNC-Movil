@@ -14,4 +14,9 @@ object ApiEndpoints {
 
     const val CHALLENGES = "api/Challenges"
     const val MEDALS = "api/Medals"
+
+    const val ANALYTICS_TRENDS = "api/Analytics/trends"
+    const val ANALYTICS_DISTRIBUTION = "api/Analytics/distribution"
+    const val ANALYTICS_COMPARISON = "api/Analytics/comparison"
+    const val RECOMMENDATIONS = "api/Recommendations"
 }

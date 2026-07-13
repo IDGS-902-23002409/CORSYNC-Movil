@@ -21,14 +21,16 @@ class BiometricCipherHelper @Inject constructor() {
         private const val TAG_SIZE = 128
     }
 
-    private val keyStore: KeyStore = KeyStore.getInstance(KEY_PROVIDER).apply {
-        load(null)
+    private val keyStore: KeyStore? by lazy {
+        try {
+            KeyStore.getInstance(KEY_PROVIDER).apply { load(null) }
+        } catch (e: Exception) {
+            null
+        }
     }
 
-    /**
-     * Genera una clave simétrica en el Android Keystore que requiere autenticación del usuario.
-     */
     private fun generateSecretKey() {
+        val ks = keyStore ?: return
         val keyGenerator = KeyGenerator.getInstance(
             KeyProperties.KEY_ALGORITHM_AES,
             KEY_PROVIDER
@@ -41,48 +43,49 @@ class BiometricCipherHelper @Inject constructor() {
             .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
             .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
             .setKeySize(256)
-            // Requerir autenticación biométrica del usuario para usar esta clave
             .setUserAuthenticationRequired(true)
-            // Invalidar la clave si se registran nuevas huellas en el dispositivo (grado bancario)
             .setInvalidatedByBiometricEnrollment(true)
 
         keyGenerator.init(builder.build())
         keyGenerator.generateKey()
     }
 
-    /**
-     * Obtiene la clave secreta desde el Keystore, generándola si no existe.
-     */
-    private fun getSecretKey(): SecretKey {
-        return (keyStore.getEntry(KEY_ALIAS, null) as? KeyStore.SecretKeyEntry)?.secretKey
-            ?: run {
-                generateSecretKey()
-                (keyStore.getEntry(KEY_ALIAS, null) as KeyStore.SecretKeyEntry).secretKey
-            }
+    private fun getSecretKey(): SecretKey? {
+        val ks = keyStore ?: return null
+        return try {
+            (ks.getEntry(KEY_ALIAS, null) as? KeyStore.SecretKeyEntry)?.secretKey
+                ?: run {
+                    generateSecretKey()
+                    (ks.getEntry(KEY_ALIAS, null) as? KeyStore.SecretKeyEntry)?.secretKey
+                }
+        } catch (e: Exception) {
+            null
+        }
     }
 
-    /**
-     * Inicializa un Cipher para cifrado.
-     */
-    fun getCipherForEncryption(): Cipher {
-        val cipher = Cipher.getInstance(TRANSFORMATION)
-        cipher.init(Cipher.ENCRYPT_MODE, getSecretKey())
-        return cipher
+    fun getCipherForEncryption(): Cipher? {
+        val key = getSecretKey() ?: return null
+        return try {
+            val cipher = Cipher.getInstance(TRANSFORMATION)
+            cipher.init(Cipher.ENCRYPT_MODE, key)
+            cipher
+        } catch (e: Exception) {
+            null
+        }
     }
 
-    /**
-     * Inicializa un Cipher para descifrado usando el IV proporcionado.
-     */
-    fun getCipherForDecryption(iv: ByteArray): Cipher {
-        val cipher = Cipher.getInstance(TRANSFORMATION)
-        val spec = GCMParameterSpec(TAG_SIZE, iv)
-        cipher.init(Cipher.DECRYPT_MODE, getSecretKey(), spec)
-        return cipher
+    fun getCipherForDecryption(iv: ByteArray): Cipher? {
+        val key = getSecretKey() ?: return null
+        return try {
+            val cipher = Cipher.getInstance(TRANSFORMATION)
+            val spec = GCMParameterSpec(TAG_SIZE, iv)
+            cipher.init(Cipher.DECRYPT_MODE, key, spec)
+            cipher
+        } catch (e: Exception) {
+            null
+        }
     }
 
-    /**
-     * Cifra un texto utilizando el Cipher autenticado de la huella digital.
-     */
     fun encrypt(plainText: String, cipher: Cipher): EncryptedData {
         val encryptedBytes = cipher.doFinal(plainText.toByteArray(Charsets.UTF_8))
         val encryptedString = Base64.encodeToString(encryptedBytes, Base64.NO_WRAP)
@@ -90,22 +93,16 @@ class BiometricCipherHelper @Inject constructor() {
         return EncryptedData(encryptedString, ivString)
     }
 
-    /**
-     * Descifra un texto utilizando el Cipher autenticado de la huella digital.
-     */
     fun decrypt(cipherText: String, cipher: Cipher): String {
         val decodedBytes = Base64.decode(cipherText, Base64.NO_WRAP)
         val decryptedBytes = cipher.doFinal(decodedBytes)
         return String(decryptedBytes, Charsets.UTF_8)
     }
 
-    /**
-     * Elimina la clave del Keystore si se deshabilita la biometría.
-     */
     fun removeSecretKey() {
-        if (keyStore.containsAlias(KEY_ALIAS)) {
-            keyStore.deleteEntry(KEY_ALIAS)
-        }
+        try {
+            keyStore?.deleteEntry(KEY_ALIAS)
+        } catch (e: Exception) { }
     }
 }
 

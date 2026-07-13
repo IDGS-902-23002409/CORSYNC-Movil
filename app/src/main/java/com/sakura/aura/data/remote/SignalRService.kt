@@ -17,6 +17,7 @@ class SignalRService {
 
     private var hubConnection: HubConnection? = null
     private val gson = Gson()
+    private var isDisconnecting = false
 
     private val _isConnected  = MutableStateFlow(false)
     val isConnected: StateFlow<Boolean> = _isConnected.asStateFlow()
@@ -30,17 +31,25 @@ class SignalRService {
 
     suspend fun connect(jwtToken: String) = withContext(Dispatchers.IO) {
         try {
+            if (hubConnection?.connectionState == HubConnectionState.CONNECTED) {
+                return@withContext
+            }
+
+            _error.value = null
+            hubConnection?.stop()
+            hubConnection = null
+
             val hubUrl = "${AppConfig.signalrHubUrl}?access_token=$jwtToken"
 
-            hubConnection = HubConnectionBuilder
+            val connection = HubConnectionBuilder
                 .create(hubUrl)
                 .build()
 
-            hubConnection?.on(
+            connection.on(
                 "ReceiveTelemetry",
                 { data: Any ->
                     try {
-                        val json  = gson.toJson(data)
+                        val json = gson.toJson(data)
                         val telem = gson.fromJson(json, TelemetryResponse::class.java)
                         _telemetry.value = telem
                         _domainTelemetry.value = telem.toDomain()
@@ -51,13 +60,22 @@ class SignalRService {
                 Any::class.java
             )
 
-            hubConnection?.start()?.blockingAwait()
+            connection.onClosed {
+                _isConnected.value = false
+                if (!isDisconnecting) {
+                    _error.value = "Conexión perdida. Reconecta para continuar."
+                }
+            }
 
-            val connected = hubConnection?.connectionState == HubConnectionState.CONNECTED
-            _isConnected.value = connected
+            connection.start().blockingAwait()
 
-            if (connected) {
-                hubConnection?.invoke("RegisterMobile", AppConfig.DEVICE_ID)
+            if (connection.connectionState == HubConnectionState.CONNECTED) {
+                hubConnection = connection
+                _isConnected.value = true
+                connection.invoke("RegisterMobile", AppConfig.DEVICE_ID)
+            } else {
+                _error.value = "No se pudo establecer conexión con el servidor"
+                _isConnected.value = false
             }
         } catch (e: Exception) {
             _error.value = "Error conectando: ${e.message}"
@@ -68,20 +86,26 @@ class SignalRService {
     fun startMeasurement() {
         if (hubConnection?.connectionState == HubConnectionState.CONNECTED) {
             hubConnection?.invoke("StartMeasurement", AppConfig.DEVICE_ID)
+        } else {
+            _error.value = "Sin conexión al servidor."
         }
     }
 
     fun stopMeasurement() {
         if (hubConnection?.connectionState == HubConnectionState.CONNECTED) {
             hubConnection?.invoke("StopMeasurement", AppConfig.DEVICE_ID)
-            _telemetry.value = null
-            _domainTelemetry.value = null
         }
+        _telemetry.value = null
+        _domainTelemetry.value = null
     }
 
     fun disconnect() {
+        isDisconnecting = true
         stopMeasurement()
         hubConnection?.stop()
+        hubConnection = null
         _isConnected.value = false
+        _error.value = null
+        isDisconnecting = false
     }
 }

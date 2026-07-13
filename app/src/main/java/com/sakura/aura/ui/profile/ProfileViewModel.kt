@@ -117,7 +117,7 @@ class ProfileViewModel @Inject constructor(
         _uiState.update { it.copy(passwordError = null, passwordSuccess = false, isVerifyingPassword = false) }
     }
 
-    fun getCipherForEncryption(): Cipher {
+    fun getCipherForEncryption(): Cipher? {
         return biometricCipherHelper.getCipherForEncryption()
     }
 
