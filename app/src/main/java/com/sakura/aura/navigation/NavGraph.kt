@@ -8,9 +8,8 @@ import com.sakura.aura.ui.auth.AuthScreen
 import com.sakura.aura.ui.challenges.ChallengesScreen
 import com.sakura.aura.ui.history.HistoryScreen
 import com.sakura.aura.ui.home.HomeScreen
-import com.sakura.aura.ui.profile.ProfileScreen
 import com.sakura.aura.ui.analytics.AnalyticsScreen
-import com.sakura.aura.ui.recommendations.RecommendationsScreen
+import com.sakura.aura.ui.profile.ProfileScreen
 
 @Composable
 fun SakuraNavGraph(navController: NavHostController) {
@@ -29,7 +28,7 @@ fun SakuraNavGraph(navController: NavHostController) {
         }
         composable(SakuraRoutes.HOME)       { HomeScreen(navController) }
         composable(SakuraRoutes.ANALYTICS)  { AnalyticsScreen(navController) }
-        composable(SakuraRoutes.RECOMMENDATIONS) { RecommendationsScreen(navController) }
+        composable(SakuraRoutes.RECOMMENDATIONS) { ChallengesScreen(navController, initialTab = 1) }
         composable(SakuraRoutes.HISTORY)    { HistoryScreen(navController) }
         composable(SakuraRoutes.CHALLENGES) { ChallengesScreen(navController) }
         composable(SakuraRoutes.PROFILE)    { ProfileScreen(navController) }

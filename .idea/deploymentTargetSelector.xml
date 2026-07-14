@@ -4,7 +4,7 @@
     <selectionStates>
       <SelectionState runConfigName="Corsync">
         <option name="selectionMode" value="DROPDOWN" />
-        <DropdownSelection timestamp="2026-07-04T16:41:49.353583900Z">
+        <DropdownSelection timestamp="2026-07-13T23:57:34.221122Z">
           <Target type="DEFAULT_BOOT">
             <handle>
               <DeviceId pluginId="PhysicalDevice" identifier="serial=ZY22K7RNN7" />
