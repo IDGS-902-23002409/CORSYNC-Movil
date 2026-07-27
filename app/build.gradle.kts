@@ -106,6 +106,10 @@ dependencies {
     implementation("com.patrykandpatrick.vico:compose:2.0.0-alpha.20")
     implementation("com.patrykandpatrick.vico:compose-m3:2.0.0-alpha.20")
 
+    // ── Unity AR ───────────────────────────────────────────────────────
+    implementation(project(":unityLibrary"))
+    implementation(fileTree("${rootProject.projectDir}/unityLibrary/libs") {
+        include("*.jar") })
 
     // ═══════════════════════════════════════════════════════════════════════
     //  TESTS UNITARIOS (test/)

@@ -40,3 +40,7 @@ replay_pid*
 .externalNativeBuild
 .cxx
 local.properties
+
+# Unity Android generated files
+/unityLibrary/build/
+/unityLibrary/.gradle/
