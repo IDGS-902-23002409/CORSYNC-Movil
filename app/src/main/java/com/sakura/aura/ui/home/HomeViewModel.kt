@@ -3,6 +3,7 @@ package com.sakura.aura.ui.home
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.sakura.aura.data.remote.AppConfig
+import com.sakura.aura.domain.model.Aura
 import com.sakura.aura.domain.model.NewReadingData
 import com.sakura.aura.domain.model.Telemetry
 import com.sakura.aura.domain.usecase.SaveReadingUseCase
@@ -36,18 +37,34 @@ data class ScanResult(
 )
 
 enum class AuraColorUi(val hex: Long, val label: String) {
-    NEUTRAL (0xFFCCCCCC, "Sin datos"),
-    ROJA    (0xFFE74C3C, "Roja"),
-    AZUL    (0xFF5DADE2, "Azul"),
-    VERDE   (0xFF2ECC71, "Verde"),
-    VIOLETA (0xFF9B59B6, "Violeta"),
-    NARANJA (0xFFE67E22, "Naranja"),
-    ROSA    (0xFFE91E8C, "Rosa");
+    NEUTRAL  (0xFFCCCCCC, "Sin datos"),
+    ROJA     (0xFFE74C3C, "Roja"),
+    NARANJA  (0xFFE67E22, "Naranja"),
+    AMARILLA (0xFFF1C40F, "Amarilla"),
+    VERDE    (0xFF2ECC71, "Verde"),
+    AZUL     (0xFF5DADE2, "Azul"),
+    VIOLETA  (0xFF9B59B6, "Violeta"),
+    ROSA     (0xFFE91E8C, "Rosa");
 
     companion object {
-        fun fromString(value: String): AuraColorUi = entries.firstOrNull {
-            it.label.equals(value, ignoreCase = true)
-        } ?: NEUTRAL
+        /**
+         * Antes comparaba contra [label], que está en femenino: los valores
+         * masculinos del backend ("Rojo", "Morado") y "Amarillo" —que ni
+         * siquiera existía aquí— caían en [NEUTRAL] y se pintaban en gris.
+         * La normalización vive ahora en [Aura.fromBackend].
+         */
+        fun fromString(value: String): AuraColorUi = fromAura(Aura.fromBackend(value))
+
+        fun fromAura(aura: Aura): AuraColorUi = when (aura) {
+            Aura.ROJO        -> ROJA
+            Aura.NARANJA     -> NARANJA
+            Aura.AMARILLO    -> AMARILLA
+            Aura.VERDE       -> VERDE
+            Aura.AZUL        -> AZUL
+            Aura.MORADO      -> VIOLETA
+            Aura.ROSA        -> ROSA
+            Aura.DESCONOCIDA -> NEUTRAL
+        }
     }
 }
 
@@ -71,21 +88,28 @@ class HomeViewModel @Inject constructor(
             }
         }
 
+        // Lo que se muestra en vivo: basta con la última lectura, conflar está bien.
         viewModelScope.launch {
             scanAuraUseCase.telemetry.collect { telemetry ->
                 telemetry?.let {
                     _uiState.update { state ->
                         state.copy(
-                            telemetry  = telemetry,
-                            auraColor  = AuraColorUi.fromString(telemetry.aura)
+                            telemetry = it,
+                            auraColor = AuraColorUi.fromString(it.aura)
                         )
                     }
-                    if (_uiState.value.isScanning) {
-                        sessionTelemetries.add(telemetry)
-                        if (sessionTelemetries.size == 2) {
-                            startAutoStopTimer()
-                        }
-                    }
+                }
+            }
+        }
+
+        // Lo que se acumula para el aura dominante: aquí no se puede perder
+        // ninguna lectura, por eso va sobre el stream y no sobre el StateFlow.
+        viewModelScope.launch {
+            scanAuraUseCase.telemetryStream.collect { telemetry ->
+                if (!_uiState.value.isScanning) return@collect
+                sessionTelemetries.add(telemetry)
+                if (sessionTelemetries.size >= 2 && autoStopJob == null) {
+                    startAutoStopTimer()
                 }
             }
         }
@@ -111,6 +135,7 @@ class HomeViewModel @Inject constructor(
 
     fun startScan() {
         autoStopJob?.cancel()
+        autoStopJob = null
         sessionTelemetries.clear()
         sessionStartDate = Instant.now()
         _uiState.update { it.copy(scanResult = null) }
@@ -120,10 +145,18 @@ class HomeViewModel @Inject constructor(
                 if (!_uiState.value.isConnected) {
                     scanAuraUseCase.connect()
                 }
-                scanAuraUseCase.startScan()
+                // Se marca ANTES de pedir la medición: al revés, toda lectura que
+                // llegara entre el invoke y este update quedaba fuera del promedio.
                 _uiState.update { it.copy(isScanning = true, isConnecting = false, error = null) }
+                scanAuraUseCase.startScan()
             } catch (e: Exception) {
-                _uiState.update { it.copy(isConnecting = false, error = "Error al iniciar: ${e.message}") }
+                _uiState.update {
+                    it.copy(
+                        isScanning = false,
+                        isConnecting = false,
+                        error = "Error al iniciar: ${e.message}"
+                    )
+                }
             }
         }
     }
@@ -155,53 +188,70 @@ class HomeViewModel @Inject constructor(
         val startDate = sessionStartDate ?: endDate.minusSeconds(10)
         val durationSeconds = Duration.between(startDate, endDate).seconds.toInt().coerceAtLeast(1)
 
-        if (sessionTelemetries.isNotEmpty()) {
-            val avgBpm = sessionTelemetries.map { it.bpm }.average()
-            val maxBpm = sessionTelemetries.map { it.bpm }.maxOrNull() ?: avgBpm
-            val minBpm = sessionTelemetries.map { it.bpm }.minOrNull() ?: avgBpm
-            val avgGsrRaw = sessionTelemetries.map { it.gsrRaw }.average().toInt()
-            val avgGsrVoltage = sessionTelemetries.map { it.gsrVoltage }.average()
+        if (sessionTelemetries.isEmpty()) {
+            // Antes esto salía en silencio: sin scanResult la pantalla no mostraba
+            // ni color ni error, que es exactamente cómo se veía "no marca el color".
+            _uiState.update {
+                it.copy(
+                    error = "No se recibieron lecturas del sensor. " +
+                        "Verifica el contacto con el dispositivo e intenta de nuevo."
+                )
+            }
+            sessionStartDate = null
+            return
+        }
 
-            val dominantAura = sessionTelemetries.map { it.aura }
-                .groupBy { it }
-                .maxByOrNull { it.value.size }
-                ?.key ?: "Neutral"
+        val avgBpm = sessionTelemetries.map { it.bpm }.average()
+        val maxBpm = sessionTelemetries.map { it.bpm }.maxOrNull() ?: avgBpm
+        val minBpm = sessionTelemetries.map { it.bpm }.minOrNull() ?: avgBpm
+        val avgGsrRaw = sessionTelemetries.map { it.gsrRaw }.average().toInt()
+        val avgGsrVoltage = sessionTelemetries.map { it.gsrVoltage }.average()
 
-            val bpmPart = ((avgBpm - 50.0) / 100.0).coerceIn(0.0, 1.0) * 40.0
-            val gsrPart = (avgGsrVoltage / 3.3).coerceIn(0.0, 1.0) * 60.0
-            val calculatedStress = (bpmPart + gsrPart).coerceIn(10.0, 95.0)
+        // Moda, no media: el aura es categórica. Se agrupa por el valor ya
+        // normalizado para que "Rojo" y "Roja" no cuenten como auras distintas,
+        // pero se persiste el string tal cual lo mandó el backend.
+        val dominantGroup = sessionTelemetries
+            .filter { Aura.fromBackend(it.aura) != Aura.DESCONOCIDA }
+            .groupBy { Aura.fromBackend(it.aura) }
+            .maxByOrNull { it.value.size }
 
-            val auraColor = AuraColorUi.fromString(dominantAura)
+        val dominantAura = dominantGroup?.key ?: Aura.DESCONOCIDA
+        val dominantAuraRaw = dominantGroup?.value?.firstOrNull()?.aura ?: "Desconocida"
 
-            _uiState.update { it.copy(
-                scanResult = ScanResult(
-                    auraColor = auraColor,
-                    avgBpm = avgBpm,
-                    dominantAura = dominantAura,
-                    stressLevel = calculatedStress
-                ),
-                auraColor = auraColor
-            ) }
+        val bpmPart = ((avgBpm - 50.0) / 100.0).coerceIn(0.0, 1.0) * 40.0
+        val gsrPart = (avgGsrVoltage / 3.3).coerceIn(0.0, 1.0) * 60.0
+        val calculatedStress = (bpmPart + gsrPart).coerceIn(10.0, 95.0)
 
-            val newReading = NewReadingData(
-                deviceId = AppConfig.DEVICE_ID,
+        val auraColor = AuraColorUi.fromAura(dominantAura)
+
+        _uiState.update { it.copy(
+            scanResult = ScanResult(
+                auraColor = auraColor,
                 avgBpm = avgBpm,
-                maxBpm = maxBpm,
-                minBpm = minBpm,
-                avgGsrRaw = avgGsrRaw,
-                avgGsrVoltage = avgGsrVoltage,
-                stressLevel = calculatedStress,
-                dominantAura = dominantAura,
-                notes = "Sesión de escaneo de aura",
-                durationSeconds = durationSeconds,
-                startDate = startDate.toString(),
-                endDate = endDate.toString()
-            )
+                dominantAura = dominantAuraRaw,
+                stressLevel = calculatedStress
+            ),
+            auraColor = auraColor
+        ) }
 
-            viewModelScope.launch {
-                saveReadingUseCase(newReading).onFailure { e ->
-                    _uiState.update { it.copy(error = "Error al guardar sesión: ${e.message}") }
-                }
+        val newReading = NewReadingData(
+            deviceId = AppConfig.DEVICE_ID,
+            avgBpm = avgBpm,
+            maxBpm = maxBpm,
+            minBpm = minBpm,
+            avgGsrRaw = avgGsrRaw,
+            avgGsrVoltage = avgGsrVoltage,
+            stressLevel = calculatedStress,
+            dominantAura = dominantAuraRaw,
+            notes = "Sesión de escaneo de aura",
+            durationSeconds = durationSeconds,
+            startDate = startDate.toString(),
+            endDate = endDate.toString()
+        )
+
+        viewModelScope.launch {
+            saveReadingUseCase(newReading).onFailure { e ->
+                _uiState.update { it.copy(error = "Error al guardar sesión: ${e.message}") }
             }
         }
         sessionTelemetries.clear()

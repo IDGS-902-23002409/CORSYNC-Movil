@@ -8,8 +8,12 @@ import com.sakura.aura.data.mapper.toDomain
 import com.sakura.aura.data.model.response.TelemetryResponse
 import com.sakura.aura.domain.model.Telemetry
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 
@@ -23,8 +27,26 @@ class SignalRService {
     val isConnected: StateFlow<Boolean> = _isConnected.asStateFlow()
 
     private val _telemetry = MutableStateFlow<TelemetryResponse?>(null)
+
+    /** Última lectura, para lo que la UI muestra en vivo. Conflar aquí está bien. */
     private val _domainTelemetry = MutableStateFlow<Telemetry?>(null)
     val domainTelemetry: StateFlow<Telemetry?> = _domainTelemetry.asStateFlow()
+
+    /**
+     * Stream sin pérdidas, para acumular la sesión y calcular el aura dominante.
+     *
+     * [domainTelemetry] es un StateFlow y por definición va *conflated*: si las
+     * lecturas llegan más rápido de lo que el colector las procesa, las
+     * intermedias se descartan silenciosamente. Eso vaciaba la muestra justo
+     * cuando más datos llegaban, que es el caso en que fallaba el promedio.
+     * El buffer absorbe las ráfagas sin bloquear el hilo de SignalR.
+     */
+    private val _telemetryStream = MutableSharedFlow<Telemetry>(
+        replay = 0,
+        extraBufferCapacity = 64,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST
+    )
+    val telemetryStream: SharedFlow<Telemetry> = _telemetryStream.asSharedFlow()
 
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
@@ -51,8 +73,10 @@ class SignalRService {
                     try {
                         val json = gson.toJson(data)
                         val telem = gson.fromJson(json, TelemetryResponse::class.java)
+                        val domain = telem.toDomain()
                         _telemetry.value = telem
-                        _domainTelemetry.value = telem.toDomain()
+                        _domainTelemetry.value = domain
+                        _telemetryStream.tryEmit(domain)
                     } catch (e: Exception) {
                         _error.value = "Error parseando telemetría: ${e.message}"
                     }

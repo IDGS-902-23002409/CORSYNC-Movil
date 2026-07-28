@@ -23,7 +23,9 @@ android {
 
     defaultConfig {
         applicationId = "com.sakura.aura"
-        minSdk = 26
+        // 27, no 26: el módulo unityLibrary declara minSdkVersion 27 y el merge
+        // de manifests falla si el host pide menos. Cuesta el soporte a Android 8.0.
+        minSdk = 27
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
@@ -46,6 +48,15 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+    }
+
+    packaging {
+        jniLibs {
+            // Unity trae sus .so precompilados y algunos llegan por más de una
+            // ruta (jniLibs + los .aar de ARCore); sin esto el merge aborta por
+            // duplicados de libunity.so / libmain.so.
+            pickFirsts += listOf("**/libunity.so", "**/libmain.so", "**/libil2cpp.so")
+        }
     }
 
     compileOptions {

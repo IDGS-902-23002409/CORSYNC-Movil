@@ -44,3 +44,8 @@ local.properties
 # Unity Android generated files
 /unityLibrary/build/
 /unityLibrary/.gradle/
+
+# El `*.jar` de más arriba excluyó silenciosamente unity-classes.jar al commitear
+# el módulo: sin él, unityLibrary no compila (faltan UnityPlayer,
+# IUnityPlayerLifecycleEvents y MultiWindowSupport). Estos jars sí se versionan.
+!/unityLibrary/libs/*.jar
