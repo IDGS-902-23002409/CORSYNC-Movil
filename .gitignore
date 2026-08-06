@@ -52,11 +52,12 @@ local.properties
 # Linux no se puede compilar: el export solo trae il2cpp.exe.
 /unityLibrary/symbols/
 
-# Exports crudos que entrega el equipo de Unity (unityLibrary1, unityLibrary2…).
-# Son ~430 MB cada uno y su contenido ya vive fusionado en /unityLibrary con los
-# parches de Gradle 9 aplicados; versionar ambos duplicaría el repo sin aportar
-# nada. Se dejan en disco como referencia, fuera de git.
+# Exports crudos que entrega el equipo de Unity (unityLibrary1, unityLibrary2…,
+# unityLibraryFiltros). Son ~430 MB cada uno y su contenido ya vive fusionado en
+# /unityLibrary con los parches de Gradle 9 aplicados; versionar ambos duplicaría
+# el repo sin aportar nada. Se dejan en disco como referencia, fuera de git.
 /unityLibrary[0-9]*/
+/unityLibraryFiltros/
 
 # Estado local del IDE: qué dispositivo tienes seleccionado para desplegar y qué
 # emuladores hay dados de alta. Cambia en cada máquina y en cada sesión, así que

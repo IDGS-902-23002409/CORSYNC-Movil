@@ -1,11 +1,15 @@
 # Estado del proyecto — CORSYNC-Movil
 
 > Documento de contexto para retomar el trabajo en otra máquina o sesión.
-> Última actualización: **1 ago 2026** · Rama: `feature/unity-compatibility`
+> Última actualización: **6 ago 2026** · Rama: `main`
 >
 > **El build ya pasa y `libil2cpp.so` está compilado** (§3.5). Lo único que
 > bloquea el objetivo es la escena de Unity, que necesita el Editor (§4.1).
 > Para probar sin el prototipo físico, ver el simulador IoT (§7).
+>
+> **Filtros de cámara (§4.6):** el módulo de la galería ya está hecho y
+> compilando; falta que Unity mande **un solo export** con auras + filtros y el
+> receptor con `MostrarFiltro`. Ver `ParaEquipoUnity/INSTRUCCIONES_FILTROS.md`.
 
 ---
 
@@ -46,6 +50,8 @@ Usuario pulsa "Escanear"
 | **`libil2cpp.so`** | ✅ **Compilado** (arm64-v8a, 27 MB) |
 | Animación Unity | ❌ No implementada — bloqueada por §4.2 |
 | Cámara / AR | ❌ No implementada — bloqueada por §4.2 |
+| **Filtros — módulo de la galería (Android)** | ✅ **Hecho** — ver §4.6 |
+| **Filtros — escenas en Unity** | ❌ Bloqueado: hace falta re-export (§4.6) |
 
 **Para probar sin el prototipo físico** hay un simulador del ESP32 en
 `CORSYNC-Backend/Tools/iot-simulator` (ver §7).
@@ -326,6 +332,69 @@ hace falta y que restringe innecesariamente los dispositivos donde instala.
   módulo Unity los necesita; convendría depurarlos.
 - Room está declarado como dependencia y en KSP, pero **no hay ni una `@Entity`,
   `@Dao` ni `@Database`** en el proyecto. Es peso muerto en el build.
+
+---
+
+## 4.6 Filtros de cámara (6 ago 2026)
+
+**Lado Android: ✅ hecho y compilando. Lado Unity: ❌ bloqueado, hay que pedir
+un re-export.** El detalle para el equipo de Unity está en
+`ParaEquipoUnity/INSTRUCCIONES_FILTROS.md`.
+
+### Qué trae el export recibido (`unityLibraryFiltros/`, sin trackear)
+
+5 escenas, leídas de su `BuildSettings` parseando el bundle `data.unity3d`:
+`FiltroMariposas` (índice 0), `FiltroDragonBall`, `FiltroLuciernagas`,
+`FiltroFuego`, `FiltroLluvia`.
+
+> Ojo al verificar esto: `strings` sobre `data.unity3d` **miente**. El listado
+> del bundle va comprimido con LZ4 y `level1..level6` se codifican como
+> referencias a `level0`, así que parece que solo hay una escena. Hay que
+> descomprimir el `blocksInfo` de verdad (flag `0x200` = padding a 16 bytes
+> antes de los datos).
+
+### Los dos bloqueadores
+
+1. **No pueden convivir dos módulos de Unity.** `unityLibraryFiltros` es un
+   export íntegro y aparte: mismo paquete `com.unity3d.player`, misma
+   `UnityPlayerActivity`, mismos `libunity.so`/`libmain.so`. Duplicados en el
+   APK. Y Unity as a Library solo admite **un** runtime por app: hay una sola
+   carpeta `assets/bin/Data/`. Por eso **no se añadió a `settings.gradle.kts`**.
+2. **El script no puede cargar un filtro.** Al proyecto de filtros le copiaron
+   tal cual el `AuraReceiver.cs` del aura, cuyo único método `MostrarAura`
+   antepone `"Aura"`. Mandar `"Fuego"` pide `AuraFuego`, que no existe →
+   `Debug.LogError` y se queda en la escena de arranque. Verificado en el C++
+   de IL2CPP (`Assembly-CSharp.cpp`), donde sobrevive hasta el comentario
+   original. No hay valor que se pueda mandar para sortearlo.
+
+Además el export **no trae `libil2cpp.so`**, así que necesitaría la compilación
+de il2cpp de decenas de minutos (§3.5) — otra razón para no mantenerlo aparte.
+
+### Lo que se pidió a Unity
+
+Un **único export con las 12 escenas** (7 auras + 5 filtros) y el
+`AuraReceiver.cs` actualizado, que añade `MostrarFiltro(string)` y deja
+`MostrarAura` intacto. Cuando llegue: se reemplaza `unityLibrary/` y **no hay
+que tocar código de Android**.
+
+### Lo que ya está implementado del lado móvil
+
+| Archivo | Qué hace |
+|---|---|
+| `ui/filters/FiltroUi.kt` | Los 5 filtros con el nombre de escena real, color, y umbral de puntos |
+| `ui/filters/FiltroStore.kt` | Persiste desbloqueados y seleccionado (`SharedPreferences`) |
+| `ui/filters/FiltrosViewModel.kt` | Puntos = suma de desafíos completados → desbloqueo |
+| `ui/gallery/FiltroCarousel.kt` | Módulo tipo Instagram dentro de la galería |
+| `unity/UnityCaptureActivity.kt` | Base común extraída de `AuraUnityActivity` |
+| `unity/FiltroUnityActivity.kt` | Cámara con filtro; guarda como `filtro_*.jpg` |
+| `unity/UnityFiltroBridge.kt` | Puente Android → Unity (`MostrarFiltro`) |
+
+Umbrales: Mariposas 0 · Luciérnagas 150 · Lluvia 300 · Fuego 500 · Aura Saiyan
+800. El desbloqueo es **monótono**: una vez ganado se persiste, para que un fallo
+de red (que deja los puntos en 0) no le quite al usuario algo ya conseguido.
+
+Las fotos con filtro caen en la misma carpeta `Pictures/CORSYNC`, así que salen
+en la galería sin tocar `AuraPhotoStore`.
 
 ---
 

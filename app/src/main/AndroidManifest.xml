@@ -72,6 +72,27 @@
             android:hardwareAccelerated="false">
             <meta-data android:name="unityplayer.UnityActivity" android:value="true" />
         </activity>
+
+        <!-- Cámara con filtro. Mismas condiciones que la vista del aura: hereda
+             de UnityPlayerActivity y comparte el proceso ":unityplayer".
+
+             Comparte proceso a propósito: Unity as a Library solo admite UN
+             UnityPlayer vivo, así que aura y filtro nunca deben coexistir. Al
+             estar en el mismo proceso con launchMode singleTask, abrir una
+             mientras la otra vive reutiliza el runtime en vez de intentar
+             levantar un segundo player (que reventaría). -->
+        <activity
+            android:name="com.sakura.aura.unity.FiltroUnityActivity"
+            android:exported="false"
+            android:process=":unityplayer"
+            android:theme="@style/UnityThemeSelector"
+            android:screenOrientation="fullSensor"
+            android:launchMode="singleTask"
+            android:configChanges="mcc|mnc|locale|touchscreen|keyboard|keyboardHidden|navigation|orientation|screenLayout|uiMode|screenSize|smallestScreenSize|fontScale|layoutDirection|density"
+            android:resizeableActivity="false"
+            android:hardwareAccelerated="false">
+            <meta-data android:name="unityplayer.UnityActivity" android:value="true" />
+        </activity>
     </application>
 
 </manifest>

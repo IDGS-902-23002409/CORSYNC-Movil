@@ -6,6 +6,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -26,11 +27,18 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.sakura.aura.navigation.SakuraBottomNavBar
 import com.sakura.aura.ui.components.SakuraBackground
+import com.sakura.aura.ui.filters.FiltroUi
+import com.sakura.aura.ui.filters.FiltrosViewModel
 import com.sakura.aura.ui.theme.LocalThemeViewModel
+import com.sakura.aura.unity.FiltroUnityActivity
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -38,12 +46,16 @@ import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun GalleryScreen(navController: NavController) {
+fun GalleryScreen(
+    navController: NavController,
+    filtrosViewModel: FiltrosViewModel = hiltViewModel()
+) {
 
     val themeViewModel = LocalThemeViewModel.current
     val isLight by themeViewModel.isLightTheme.collectAsState()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val filtrosState by filtrosViewModel.uiState.collectAsState()
 
     val textMain = if (isLight) Color(0xFF1A1A1A) else Color.White
     val textSub  = if (isLight) Color(0xFF555555) else Color.White.copy(alpha = 0.5f)
@@ -63,6 +75,21 @@ fun GalleryScreen(navController: NavController) {
     fun recargar() = scope.launch {
         fotos = AuraPhotoStore.cargar(context)
         seleccion = emptySet()
+    }
+
+    // La cámara de filtros es otra activity (y otro proceso): al volver de ella
+    // la foto recién tomada no aparecería, porque el LaunchedEffect de arriba
+    // solo corre una vez. Se recarga en cada ON_RESUME.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observador = LifecycleEventObserver { _, evento ->
+            if (evento == Lifecycle.Event.ON_RESUME) {
+                scope.launch { fotos = AuraPhotoStore.cargar(context) }
+                filtrosViewModel.cargar()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observador)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observador) }
     }
 
     val enSeleccion = seleccion.isNotEmpty()
@@ -115,27 +142,53 @@ fun GalleryScreen(navController: NavController) {
 
                 Spacer(Modifier.height(20.dp))
 
-                when {
-                    cargando -> Box(
-                        Modifier.fillMaxWidth().weight(1f),
-                        contentAlignment = Alignment.Center
-                    ) { CircularProgressIndicator(color = Color(0xFFE91E8C)) }
+                // El carrusel va DENTRO del grid, como cabecera a todo el ancho,
+                // en vez de fijo encima: ocupa ~280dp y en una pantalla chica
+                // dejaba la cuadrícula de fotos reducida a nada. Así hace scroll
+                // junto con las fotos, que es como se comporta Instagram.
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(2),
+                    modifier = Modifier.fillMaxWidth().weight(1f),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    item(span = { GridItemSpan(maxLineSpan) }) {
+                        Column {
+                            FiltroCarousel(
+                                filtros = FiltroUi.entries,
+                                desbloqueados = filtrosState.desbloqueados,
+                                seleccionado = filtrosState.seleccionado,
+                                puntos = filtrosState.puntos,
+                                textMain = textMain,
+                                textSub = textSub,
+                                cardBg = cardBg,
+                                border = border,
+                                onSeleccionar = { filtrosViewModel.seleccionar(it) },
+                                onUsar = { FiltroUnityActivity.launch(context, it) }
+                            )
+                            Spacer(Modifier.height(20.dp))
+                        }
+                    }
 
-                    fotos.isEmpty() -> EmptyState(
-                        textMain = textMain,
-                        textSub = textSub,
-                        cardBg = cardBg,
-                        border = border,
-                        modifier = Modifier.fillMaxWidth().weight(1f)
-                    )
+                    when {
+                        cargando -> item(span = { GridItemSpan(maxLineSpan) }) {
+                            Box(
+                                Modifier.fillMaxWidth().padding(vertical = 40.dp),
+                                contentAlignment = Alignment.Center
+                            ) { CircularProgressIndicator(color = Color(0xFFE91E8C)) }
+                        }
 
-                    else -> LazyVerticalGrid(
-                        columns = GridCells.Fixed(2),
-                        modifier = Modifier.fillMaxWidth().weight(1f),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        items(fotos, key = { it.uri.toString() }) { foto ->
+                        fotos.isEmpty() -> item(span = { GridItemSpan(maxLineSpan) }) {
+                            EmptyState(
+                                textMain = textMain,
+                                textSub = textSub,
+                                cardBg = cardBg,
+                                border = border,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+
+                        else -> items(fotos, key = { it.uri.toString() }) { foto ->
                             val id = foto.uri.toString()
                             val marcada = id in seleccion
                             PhotoCell(
@@ -159,6 +212,33 @@ fun GalleryScreen(navController: NavController) {
                 Spacer(Modifier.height(12.dp))
             }
         }
+    }
+
+    if (filtrosState.recienDesbloqueados.isNotEmpty()) {
+        val ganados = filtrosState.recienDesbloqueados
+        AlertDialog(
+            onDismissRequest = { filtrosViewModel.avisoVisto() },
+            containerColor = Color(0xFF141414),
+            title = {
+                Text(
+                    if (ganados.size == 1) "¡Filtro desbloqueado!"
+                    else "¡${ganados.size} filtros desbloqueados!",
+                    color = Color.White
+                )
+            },
+            text = {
+                Text(
+                    ganados.joinToString("\n") { "✨ ${it.label} — ${it.descripcion}" },
+                    color = Color.White.copy(alpha = 0.75f),
+                    fontSize = 14.sp
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { filtrosViewModel.avisoVisto() }) {
+                    Text("Probarlo", color = Color(0xFFE91E8C))
+                }
+            }
+        )
     }
 
     vistaPrevia?.let { foto ->
@@ -301,7 +381,8 @@ private fun EmptyState(
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                "Escanea tu aura, ábrela en 3D y pulsa el botón de cámara para guardar tu primera captura.",
+                "Escanea tu aura y ábrela en 3D, o elige un filtro aquí arriba. " +
+                    "Pulsa el botón de cámara para guardar tu primera captura.",
                 color = textSub,
                 fontSize = 13.sp,
                 textAlign = TextAlign.Center
