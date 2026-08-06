@@ -71,24 +71,24 @@ static Il2CppMethodPointer s_methodPointers[18] =
 };
 static const int32_t s_InvokerIndices[18] = 
 {
-	3174,
-	4528,
-	4528,
-	4528,
-	6804,
-	6804,
+	3175,
+	4529,
+	4529,
+	4529,
+	6807,
 	6807,
 	6810,
-	6364,
-	5901,
-	7960,
-	6375,
-	6375,
+	6813,
+	6365,
+	5902,
+	7964,
+	6376,
 	6376,
 	6377,
-	6024,
-	5858,
-	5637,
+	6378,
+	6025,
+	5859,
+	5638,
 };
 IL2CPP_EXTERN_C const Il2CppCodeGenModule g_Unity_XR_OpenXR_Features_ConformanceAutomation_CodeGenModule;
 const Il2CppCodeGenModule g_Unity_XR_OpenXR_Features_ConformanceAutomation_CodeGenModule = 

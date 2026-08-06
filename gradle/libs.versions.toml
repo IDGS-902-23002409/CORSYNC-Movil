@@ -1,5 +1,9 @@
 [versions]
-agp = "9.3.0"
+# 9.2.1 y no 9.3.0: Android Studio 2025.3.4 soporta como máximo AGP 9.2.1 y
+# aborta el sync con "incompatible version". Gradle no hace esa comprobación,
+# así que por CLI compilaba igual y el problema solo se veía en el IDE.
+# Al subir Studio se puede volver a subir esto.
+agp = "9.2.1"
 kotlin = "2.2.10"
 coreKtx = "1.13.1"
 lifecycleRuntimeKtx = "2.8.5"

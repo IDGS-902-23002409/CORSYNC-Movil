@@ -51,6 +51,27 @@
             tools:replace="android:exported">
             <intent-filter tools:node="removeAll" />
         </activity>
+
+        <!-- Vista 3D del aura. Hereda de UnityPlayerActivity, así que necesita
+             el mismo theme y configChanges: sin ellos Unity se reinicia al
+             rotar o al cambiar de tamaño la ventana.
+
+             process=":unityplayer": Unity as a Library MATA su proceso al
+             destruirse la activity (UnityPlayer.destroy → killProcess). En el
+             proceso principal eso cerraba la app entera al pulsar "atrás".
+             Aislado aquí, solo muere Unity y la app queda intacta debajo. -->
+        <activity
+            android:name="com.sakura.aura.unity.AuraUnityActivity"
+            android:exported="false"
+            android:process=":unityplayer"
+            android:theme="@style/UnityThemeSelector"
+            android:screenOrientation="fullSensor"
+            android:launchMode="singleTask"
+            android:configChanges="mcc|mnc|locale|touchscreen|keyboard|keyboardHidden|navigation|orientation|screenLayout|uiMode|screenSize|smallestScreenSize|fontScale|layoutDirection|density"
+            android:resizeableActivity="false"
+            android:hardwareAccelerated="false">
+            <meta-data android:name="unityplayer.UnityActivity" android:value="true" />
+        </activity>
     </application>
 
 </manifest>

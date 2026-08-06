@@ -31,6 +31,15 @@ android {
         versionName = "1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
+        ndk {
+            // Debe coincidir con los ABIs para los que unityLibrary compila
+            // libil2cpp.so. Sin este filtro el APK se llevaba también
+            // lib/x86_64/libunity.so pero SIN su libil2cpp.so, así que en un
+            // emulador x86_64 la app instalaba y reventaba al arrancar Unity.
+            // Mejor que no instale a que instale rota.
+            abiFilters += "arm64-v8a"
+        }
+
         buildConfigField("String", "API_BASE_URL", "\"${env("API_BASE_URL", "http://corsync.runasp.net/")}\"")
         buildConfigField("String", "SIGNALR_HUB_URL", "\"${env("SIGNALR_HUB_URL", "http://corsync.runasp.net/telemetryHub")}\"")
     }

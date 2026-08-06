@@ -6,6 +6,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.sakura.aura.ui.auth.AuthScreen
 import com.sakura.aura.ui.challenges.ChallengesScreen
+import com.sakura.aura.ui.gallery.GalleryScreen
 import com.sakura.aura.ui.history.HistoryScreen
 import com.sakura.aura.ui.home.HomeScreen
 import com.sakura.aura.ui.analytics.AnalyticsScreen
@@ -30,6 +31,7 @@ fun SakuraNavGraph(navController: NavHostController) {
         composable(SakuraRoutes.ANALYTICS)  { AnalyticsScreen(navController) }
         composable(SakuraRoutes.RECOMMENDATIONS) { ChallengesScreen(navController, initialTab = 1) }
         composable(SakuraRoutes.HISTORY)    { HistoryScreen(navController) }
+        composable(SakuraRoutes.GALLERY)    { GalleryScreen(navController) }
         composable(SakuraRoutes.CHALLENGES) { ChallengesScreen(navController) }
         composable(SakuraRoutes.PROFILE)    { ProfileScreen(navController) }
     }

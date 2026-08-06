@@ -15,4 +15,13 @@
     <string name="scan_energy">Iniciar Escaneo de Energía</string>
     <string name="your_aura_today">Tu Aura de Hoy</string>
     <string name="cosmic_connection">Conexión Cósmica: Estable</string>
+
+    <!-- Requerido por UnityPlayer.GetGlViewContentDescription(): lo resuelve en
+         runtime con getIdentifier(..., getPackageName()), o sea contra el paquete
+         de la app. El export de Unity lo deja en su módulo `launcher` (la app
+         demo), que en Unity as a Library no se usa, así que sin esta línea Unity
+         crashea al arrancar con "String resource ID #0x0".
+         Va aquí y no en unityLibrary a propósito: así sobrevive a los
+         re-exports, que espejan ese módulo completo. -->
+    <string name="game_view_content_description">Vista del aura en 3D</string>
 </resources>

@@ -1,10 +1,11 @@
 # Estado del proyecto — CORSYNC-Movil
 
 > Documento de contexto para retomar el trabajo en otra máquina o sesión.
-> Última actualización: **28 jul 2026** · Rama: `feature/unity-compatibility`
+> Última actualización: **1 ago 2026** · Rama: `feature/unity-compatibility`
 >
-> **Si vas a trabajar en Windows, salta directo a la [sección 6](#6-al-iniciar-sesión-en-windows).**
-> Es la parte que cambia según el sistema operativo.
+> **El build ya pasa y `libil2cpp.so` está compilado** (§3.5). Lo único que
+> bloquea el objetivo es la escena de Unity, que necesita el Editor (§4.1).
+> Para probar sin el prototipo físico, ver el simulador IoT (§7).
 
 ---
 
@@ -41,8 +42,13 @@ Usuario pulsa "Escanear"
 | SignalR → app (conexión, telemetría, aura) | ✅ Funciona |
 | Cálculo del aura dominante de la sesión | ✅ Corregido (ver §3) |
 | Persistencia de la lectura al backend | ✅ Funciona |
-| Animación Unity | ❌ No implementada |
-| Cámara / AR | ❌ No implementada |
+| **Build de la app (`:app:assembleDebug`)** | ✅ **Verde** — ver §3.5 |
+| **`libil2cpp.so`** | ✅ **Compilado** (arm64-v8a, 27 MB) |
+| Animación Unity | ❌ No implementada — bloqueada por §4.2 |
+| Cámara / AR | ❌ No implementada — bloqueada por §4.2 |
+
+**Para probar sin el prototipo físico** hay un simulador del ESP32 en
+`CORSYNC-Backend/Tools/iot-simulator` (ver §7).
 
 ---
 
@@ -106,39 +112,128 @@ Ya se añadió la excepción `!/unityLibrary/libs/*.jar` y el jar está commitea
 
 ---
 
+### 3.5 El build ya pasa — `libil2cpp.so` compilado (1 ago 2026)
+
+`:app:assembleDebug` termina en verde y produce un APK de **81.5 MB** con
+`lib/arm64-v8a/libil2cpp.so` (27 MB) dentro. Se compiló en Windows con el
+`il2cpp.exe` que trae el propio export; **no hizo falta el Editor de Unity**.
+
+Hubo que resolver cuatro cosas, ninguna documentada antes porque el build nunca
+había llegado tan lejos:
+
+**1. El NDK.** No estaba instalado y tampoco había `cmdline-tools` para bajarlo
+con `sdkmanager`. Se descargó el zip directo del repositorio de Google. **Ojo con
+la versión:** el zip rotulado `android-ndk-r21d-windows-x86_64.zip` trae en
+realidad `Pkg.Revision = 21.3.6528147`, no el `21.4.7075529` que cita esta guía.
+AGP resuelve el NDK por **nombre de carpeta** y luego verifica el `Pkg.Revision`,
+así que los tres tienen que coincidir:
+
+```
+%LOCALAPPDATA%\Android\Sdk\ndk\21.3.6528147\   ← nombre de carpeta
+        source.properties → Pkg.Revision = 21.3.6528147
+unityLibrary/build.gradle → ndkVersion '21.3.6528147'
+```
+
+**2. `Could not find method BuildIl2Cpp()`.** El export declara
+`task BuildIl2CppTask` **dentro** del bloque `android {}`. Con Gradle 9 la
+resolución de scope del closure ya no alcanza desde ahí las funciones del script.
+Se movió la tarea (y su `afterEvaluate`) al nivel del script.
+
+**3. `Could not find method exec()`.** **Gradle 9 eliminó `Project.exec()`**, que
+es lo que usaba la función `BuildIl2Cpp` del export. Se reemplazó por
+`ProcessBuilder` con `inheritIO()` — no depende de la API de Gradle y además deja
+ver el avance de il2cpp en vivo. `ant.move` se cambió por operaciones de `File`
+por el mismo motivo.
+
+**4. `BuildIl2CppTask` corría en cada build.** La tarea no declara inputs ni
+outputs, así que Gradle la consideraba siempre desactualizada y relanzaba
+il2cpp.exe cada vez. Se le puso un `onlyIf` que la salta si el `.so` ya existe;
+para forzarla: `gradlew :app:assembleDebug -PforceIl2Cpp`.
+
+**Solo se compila `arm64-v8a`.** Cada ABI extra es una pasada completa de IL2CPP
+sobre los ~269 MB de C++ (la primera tardó ~25 min). El filtro está en **dos**
+sitios y deben ir sincronizados: `abiFilters` de `unityLibrary` y el de `app`.
+Si solo se pone en uno, el APK se lleva `lib/x86_64/libunity.so` **sin** su
+`libil2cpp.so` y la app instala en un emulador x86_64 para reventar al arrancar
+Unity. Para recuperar x86_64 hay que añadir el ABI en los dos `abiFilters` **y**
+la llamada `BuildIl2Cpp(..., 'x64', 'x86_64', ...)` en la tarea.
+
+> **Commitear `unityLibrary/src/main/jniLibs/arm64-v8a/libil2cpp.so`** (27 MB)
+> para que nadie más tenga que repetir la compilación, y en particular para que
+> quien trabaje en Linux pueda construir — ahí `il2cpp.exe` no corre.
+
+### 3.6 El sync de Android Studio fallaba (AGP demasiado nuevo)
+
+Síntoma engañoso: **compilaba perfecto por CLI pero Studio no sincronizaba**, así
+que no se podía instalar ni depurar desde el IDE.
+
+```
+The project is using an incompatible version (AGP 9.3.0) of the
+Android Gradle plugin. Latest supported version is AGP 9.2.1
+```
+
+Android Studio comprueba la versión de AGP contra la suya y aborta; **Gradle no
+hace esa comprobación**, de ahí que por línea de comandos nunca diera problema.
+Studio 2025.3.4 admite hasta AGP 9.2.1, así que se bajó `agp` a **9.2.1** en
+`libs.versions.toml`.
+
+> Si alguien actualiza Android Studio, puede volver a subir AGP. La regla es que
+> **AGP nunca puede ser más nuevo que el Studio que abre el proyecto**; al revés
+> sí se tolera.
+
+El error vive en `%LOCALAPPDATA%\Google\AndroidStudio<versión>\log\idea.log`, que
+es donde conviene buscar cuando el sync falla y el panel del IDE no dice gran cosa.
+
+---
+
 ## 4. Lo que falta
 
-### 4.1 Bloqueador inmediato — `libil2cpp.so`
+### 4.1 Bloqueador único — la escena de Unity está vacía
 
-El build llega hasta `:unityLibrary:BuildIl2CppTask` y ahí muere.
+Con el `.so` ya compilado (§3.5), **lo que queda no se puede resolver sin el
+Editor de Unity 2021.3.4f1**. Se volvió a verificar el 1 ago 2026 extrayendo los
+símbolos de `Assembly-CSharp.cpp`: el assembly de usuario contiene exactamente
+tres tipos — `FireAnimation`, `RutaVuelo` y `RutaVuelo2` — y cada uno solo tiene
+`Start`, `Update` y constructor. **No hay ningún método público al que
+`UnitySendMessage` pueda llamar, ni un solo componente de AR Foundation.**
 
-**Situación:**
+O sea: el APK ya arranca Unity, pero Unity no tiene forma de enterarse del aura
+ni de mostrar la cámara. El detalle está en §4.2.
 
-- `jniLibs/arm64-v8a/` y `jniLibs/x86_64/` tienen `libunity.so`, `libmain.so` y
-  `libUnityOpenXR.so`, **pero NO `libil2cpp.so`**.
-- `libil2cpp.so` es donde vive *todo el código C# compilado a nativo*. Sin él
-  Unity arranca pero no ejecuta nada. Es obligatorio.
-- El export trae los ~269 MB de C++ generado esperando que Gradle lo compile.
-- **El toolchain IL2CPP del export es de Windows**: en
-  `Il2CppOutputProject/IL2CPP/build/deploy/` solo hay `.exe` (`il2cpp.exe`,
-  `UnityLinker.exe`, `createdump.exe`). Cero binarios de Linux.
+### 4.1-bis Estado del export del 1 ago (`unityLibrary1`, ya integrado)
 
-**Por eso el sistema operativo importa:**
+El equipo de Unity entregó un export nuevo con las **7 escenas de aura**. Se
+integró sobre `unityLibrary` conservando los parches de §3.5. Verificado
+descomprimiendo `data.unity3d` (UnityFS + LZ4):
 
-| Sistema | Puede generar `libil2cpp.so` |
+| Índice | Escena |
 |---|---|
-| **Windows** | ✅ Sí — el `il2cpp.exe` corre. Solo falta instalar el NDK. |
-| **Linux** | ❌ No — la tarea busca `il2cpp` sin extensión y no existe. Requeriría el Editor de Unity para Linux instalado. |
+| 0 | `AuraNeutral` ← arranca aquí |
+| 1 | `AuraRoja` |
+| 2 | `AuraAzul` |
+| 3 | `AuraVerde` |
+| 4 | `AuraVioleta` |
+| 5 | `AuraNaranja` |
+| 6 | `AuraRosa` |
 
-Alternativa si no se quiere compilar: pedirle a **Saul** (hizo el export, trabaja
-en Windows) que compile de su lado y mande el archivo resultante de
-`unityLibrary/src/main/jniLibs/arm64-v8a/libil2cpp.so`. Con **arm64-v8a** basta;
-el dispositivo de pruebas es ARM64.
+`Scenes In Build` está completo y correcto. **No hay escena `AuraAmarilla`** y no
+va a haberla: el bridge mapea `AMARILLA → Naranja` (ver `UnityAuraBridge.kt`).
 
-> Cuando el `.so` exista (compilado localmente o recibido), hay que **desactivar
-> `BuildIl2CppTask`** en `unityLibrary/build.gradle` para que Gradle use el
-> archivo ya hecho en vez de intentar recompilarlo. Si no, seguirá fallando
-> aunque el `.so` esté puesto.
+**Lo que ese export todavía NO trae: el script receptor.** Confirmado en dos
+fuentes sin comprimir (`Assembly-CSharp.cpp` y `global-metadata.dat`): los
+únicos tipos de usuario siguen siendo `FireAnimation`, `RutaVuelo` y
+`RutaVuelo2`. Sin `AuraReceiver`, `UnitySendMessage` no tiene destinatario y
+Unity se queda en la escena 0 para siempre.
+
+Se le entregó al equipo el script ya escrito y un checklist en
+`ParaEquipoUnity/`. Cuando devuelvan el export corregido, la integración es:
+espejar `src/` y `libs/` **sin tocar `build.gradle`**, quitar el atributo
+`package=` del manifest (AGP 8+ lo prohíbe y el export lo reintroduce cada vez),
+y recompilar.
+
+> Para inspeccionar un export sin abrir Unity, el script que lista escenas y
+> busca el receptor quedó documentado en §3.5; parsea el bundle UnityFS
+> descomprimiendo los bloques LZ4.
 
 ### 4.2 Trabajo dentro de la escena de Unity
 
@@ -166,7 +261,26 @@ Hay que abrir el Editor de Unity (2021.3.4f1, proyecto "DemoAura") y:
 3. Enlazar el color y la velocidad a los campos que ya existen, en vez de las
    constantes del Inspector.
 
-### 4.3 Puente Kotlin → Unity
+### 4.3 Puente Kotlin → Unity — ✅ hecho (2 ago 2026)
+
+Ya está escrito y compila. Tres piezas:
+
+- **`unity/UnityAuraBridge.kt`** — traduce `AuraColorUi` al nombre que espera el
+  receptor y llama a `UnityPlayer.UnitySendMessage`. Aquí vive el mapeo
+  `AMARILLA → Naranja`.
+- **`unity/AuraUnityActivity.kt`** — hereda de `UnityPlayerActivity`, lee el aura
+  del Intent y reenvía el mensaje en 0/400/1000/2000/3500 ms. `UnitySendMessage`
+  no confirma entrega ni avisa si se pierde, y Unity tarda en levantar; por eso
+  se reintenta y por eso el receptor es idempotente.
+- **`HomeScreen.kt`** — botón *"Ver mi aura en 3D"* en la tarjeta de resultado.
+
+Se lanza por Intent y no embebido en un `AndroidView`, al revés de lo que
+recomendaba la versión anterior de este documento. El motivo de aquella
+recomendación era que el host podía morir a media medición y cortar la conexión
+al hub; **ya no aplica**, porque el aura se muestra cuando la sesión terminó y
+el promedio está calculado. No hay telemetría en vivo que perder.
+
+### 4.3-bis Referencia del puente (versión original, para contexto)
 
 Recién después de 4.2 tiene sentido. `SignalRService` ya es `@Singleton`, así
 que el puente puede observar `telemetryStream` sin abrir una segunda conexión al
@@ -220,12 +334,15 @@ hace falta y que restringe innecesariamente los dispositivos donde instala.
 | Dato | Valor |
 |---|---|
 | Unity | **2021.3.4f1** · proyecto "DemoAura" |
-| Backend AGP / Gradle | AGP **9.3.0** · Gradle **9.6.1** |
+| Backend AGP / Gradle | AGP **9.2.1** · Gradle **9.6.1** |
+| Android Studio | **2025.3.4** — soporta hasta AGP 9.2.1 (ver §3.6) |
 | Kotlin / KSP / Hilt | 2.2.10 · 2.2.0-2.0.2 · 2.56.2 |
 | minSdk / compileSdk | 27 / 35 |
-| ABIs | `arm64-v8a`, `x86_64` |
+| ABIs | `arm64-v8a` (solo — ver §3.5) |
+| NDK | **21.3.6528147** (no el 21.4 que se citaba; ver §3.5) |
 | Dispositivo de pruebas | Motorola Razr 50 (ARM64) |
 | Hub SignalR | `/telemetryHub` · device `ESP32_MAX30102` |
+| Backend | Desplegado en `http://corsync.runasp.net` — la app apunta ahí |
 
 **Quién hizo qué:**
 
@@ -236,40 +353,46 @@ hace falta y que restringe innecesariamente los dispositivos donde instala.
 
 ---
 
-## 6. Al iniciar sesión en Windows
-
-Es el entorno donde el bloqueador de §4.1 **sí se puede resolver localmente**.
-
-**1. Instalar el NDK que pide Unity 2021.3** (una sola vez), desde el SDK Manager
-de Android Studio o por línea de comandos:
-
-```bat
-sdkmanager "ndk;21.4.7075529" "platforms;android-30" "build-tools;30.0.2"
-```
-
-**2. Verificar que Gradle encuentra el NDK.** Si hace falta, en `local.properties`:
-
-```properties
-ndk.dir=C\:\\Users\\<usuario>\\AppData\\Local\\Android\\Sdk\\ndk\\21.4.7075529
-```
-
-**3. Compilar.** La primera vez `BuildIl2CppTask` tarda bastante (decenas de
-minutos): está compilando ~269 MB de C++ generado.
+## 6. Compilar
 
 ```bat
 gradlew.bat :app:assembleDebug
 ```
 
-**4. Confirmar que el `.so` se generó:**
+Sale en `app\build\outputs\apk\debug\app-debug.apk` (~81 MB). Si el `.so` ya está
+en el repo, tarda segundos: `BuildIl2CppTask` se salta sola.
+
+**Si `libil2cpp.so` NO está** (repo recién clonado y el binario no se commiteó),
+la primera compilación tarda ~25 min y hace falta el NDK **21.3.6528147** en
+`%LOCALAPPDATA%\Android\Sdk\ndk\21.3.6528147\`. Los detalles y las trampas de
+versión están en §3.5.
+
+> En **Linux** esto no funciona: el export solo trae `il2cpp.exe`, sin binarios de
+> Linux. Ahí hay que traerse el `.so` ya compilado desde una máquina Windows.
+
+---
+
+## 7. Probar sin el prototipo físico — simulador IoT
+
+En **`CORSYNC-Backend/Tools/iot-simulator`** (su propio README tiene el detalle).
 
 ```bat
-dir unityLibrary\src\main\jniLibs\arm64-v8a\libil2cpp.so
+cd CORSYNC-Backend\Tools\iot-simulator
+node simulator.js
 ```
 
-Si aparece, el bloqueador quedó resuelto y se puede pasar al trabajo de escena
-(§4.2). **Commitea ese `.so`** para que quien trabaje en Linux también pueda
-construir sin repetir todo esto.
+Se conecta al backend **desplegado**, se registra como `ESP32_MAX30102` y queda
+esperando. Panel de control en **http://localhost:5300**.
 
-> Si prefieres no esperar la compilación, se puede acotar a una sola arquitectura
-> quitando `x86_64` de los `abiFilters` en `unityLibrary/build.gradle`. Solo
-> perderías poder correr en emulador x86; en el Razr 50 (ARM64) es indiferente.
+- Habla el protocolo SignalR crudo igual que el firmware (negotiate, handshake
+  terminado en `0x1E`, invocaciones JSON). Sin dependencias de npm; requiere
+  Node 22+ por el `WebSocket` nativo.
+- **Obedece `StartTelemetry` / `StopTelemetry`**: no envía nada hasta que pulses
+  "Escanear" en la app. El panel tiene un botón para forzarlo sin teléfono.
+- Los escenarios (Rojo…Morado) fijan `bpm` y `gsrVoltaje` en el centro de su
+  franja, con ruido que nunca cruza un umbral: **el aura que pides es la que
+  devuelve el backend**. Verificado ida y vuelta el 1 ago 2026.
+- Para probar el **aura dominante** usa *Ciclo* o *Deriva*; con un escenario fijo
+  siempre saldría el mismo color.
+
+No toca el backend, así que **no hay nada que redesplegar**.
