@@ -7,6 +7,7 @@ import androidx.compose.material.icons.outlined.EmojiEvents
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.MenuBook
 import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -26,6 +27,7 @@ object SakuraRoutes {
     const val ANALYTICS = "analytics"
     const val RECOMMENDATIONS = "recommendations"
     const val HISTORY = "history"
+    const val GALLERY = "gallery"
     const val CHALLENGES = "challenges"
     const val PROFILE = "profile"
 }
@@ -41,6 +43,7 @@ val bottomNavItems = listOf(
     BottomNavItem("Inicio",      SakuraRoutes.HOME,       Icons.Outlined.Home),
     BottomNavItem("Analíticas",  SakuraRoutes.ANALYTICS,  Icons.Outlined.BarChart),
     BottomNavItem("Historial",   SakuraRoutes.HISTORY,    Icons.Outlined.MenuBook),
+    BottomNavItem("Galería",     SakuraRoutes.GALLERY,    Icons.Outlined.PhotoLibrary),
     BottomNavItem("Desafíos",    SakuraRoutes.CHALLENGES, Icons.Outlined.EmojiEvents),
     BottomNavItem("Perfil",      SakuraRoutes.PROFILE,    Icons.Outlined.Person),
 )

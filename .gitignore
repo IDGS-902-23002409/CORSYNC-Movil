@@ -40,3 +40,31 @@ replay_pid*
 .externalNativeBuild
 .cxx
 local.properties
+
+# Unity Android generated files
+/unityLibrary/build/
+/unityLibrary/.gradle/
+
+# Símbolos de depuración que BuildIl2CppTask deja al compilar: 229 MB de
+# libil2cpp.so sin strippear. No hacen falta para construir ni para correr.
+# El que SÍ se versiona es /unityLibrary/src/main/jniLibs/arm64-v8a/libil2cpp.so
+# (27 MB), para que nadie tenga que repetir los ~25 min de IL2CPP — y porque en
+# Linux no se puede compilar: el export solo trae il2cpp.exe.
+/unityLibrary/symbols/
+
+# Exports crudos que entrega el equipo de Unity (unityLibrary1, unityLibrary2…).
+# Son ~430 MB cada uno y su contenido ya vive fusionado en /unityLibrary con los
+# parches de Gradle 9 aplicados; versionar ambos duplicaría el repo sin aportar
+# nada. Se dejan en disco como referencia, fuera de git.
+/unityLibrary[0-9]*/
+
+# Estado local del IDE: qué dispositivo tienes seleccionado para desplegar y qué
+# emuladores hay dados de alta. Cambia en cada máquina y en cada sesión, así que
+# solo genera conflictos.
+/.idea/deploymentTargetSelector.xml
+/.idea/deviceManager.xml
+
+# El `*.jar` de más arriba excluyó silenciosamente unity-classes.jar al commitear
+# el módulo: sin él, unityLibrary no compila (faltan UnityPlayer,
+# IUnityPlayerLifecycleEvents y MultiWindowSupport). Estos jars sí se versionan.
+!/unityLibrary/libs/*.jar

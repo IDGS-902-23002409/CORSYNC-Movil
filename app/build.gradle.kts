@@ -23,11 +23,22 @@ android {
 
     defaultConfig {
         applicationId = "com.sakura.aura"
-        minSdk = 26
+        // 27, no 26: el módulo unityLibrary declara minSdkVersion 27 y el merge
+        // de manifests falla si el host pide menos. Cuesta el soporte a Android 8.0.
+        minSdk = 27
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        ndk {
+            // Debe coincidir con los ABIs para los que unityLibrary compila
+            // libil2cpp.so. Sin este filtro el APK se llevaba también
+            // lib/x86_64/libunity.so pero SIN su libil2cpp.so, así que en un
+            // emulador x86_64 la app instalaba y reventaba al arrancar Unity.
+            // Mejor que no instale a que instale rota.
+            abiFilters += "arm64-v8a"
+        }
 
         buildConfigField("String", "API_BASE_URL", "\"${env("API_BASE_URL", "http://corsync.runasp.net/")}\"")
         buildConfigField("String", "SIGNALR_HUB_URL", "\"${env("SIGNALR_HUB_URL", "http://corsync.runasp.net/telemetryHub")}\"")
@@ -46,6 +57,15 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+    }
+
+    packaging {
+        jniLibs {
+            // Unity trae sus .so precompilados y algunos llegan por más de una
+            // ruta (jniLibs + los .aar de ARCore); sin esto el merge aborta por
+            // duplicados de libunity.so / libmain.so.
+            pickFirsts += listOf("**/libunity.so", "**/libmain.so", "**/libil2cpp.so")
+        }
     }
 
     compileOptions {
@@ -106,6 +126,10 @@ dependencies {
     implementation("com.patrykandpatrick.vico:compose:2.0.0-alpha.20")
     implementation("com.patrykandpatrick.vico:compose-m3:2.0.0-alpha.20")
 
+    // ── Unity AR ───────────────────────────────────────────────────────
+    implementation(project(":unityLibrary"))
+    implementation(fileTree("${rootProject.projectDir}/unityLibrary/libs") {
+        include("*.jar") })
 
     // ═══════════════════════════════════════════════════════════════════════
     //  TESTS UNITARIOS (test/)

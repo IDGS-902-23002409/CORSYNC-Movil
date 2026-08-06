@@ -10,6 +10,12 @@
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
     <uses-permission android:name="android.permission.USE_FINGERPRINT" />
 
+    <!-- ── Cámara (vista AR del aura) ─────────────────────────────────────
+         Lo declara también unityLibrary, pero se explicita aquí porque el
+         host es quien debe pedirlo en runtime: el manifest de Unity trae
+         unityplayer.SkipPermissionsDialog=true, o sea que Unity NO lo pide. -->
+    <uses-permission android:name="android.permission.CAMERA" />
+
     <application
         android:name=".SakuraApplication"
         android:networkSecurityConfig="@xml/network_security_config"
@@ -33,6 +39,38 @@
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+        </activity>
+
+        <!-- unityLibrary declara UnityPlayerActivity como LAUNCHER exportada,
+             lo que dejaba DOS íconos de la app en el drawer. Se conserva la
+             activity (la necesitamos para la vista AR) pero sin su launcher. -->
+        <activity
+            android:name="com.unity3d.player.UnityPlayerActivity"
+            android:exported="false"
+            tools:node="merge"
+            tools:replace="android:exported">
+            <intent-filter tools:node="removeAll" />
+        </activity>
+
+        <!-- Vista 3D del aura. Hereda de UnityPlayerActivity, así que necesita
+             el mismo theme y configChanges: sin ellos Unity se reinicia al
+             rotar o al cambiar de tamaño la ventana.
+
+             process=":unityplayer": Unity as a Library MATA su proceso al
+             destruirse la activity (UnityPlayer.destroy → killProcess). En el
+             proceso principal eso cerraba la app entera al pulsar "atrás".
+             Aislado aquí, solo muere Unity y la app queda intacta debajo. -->
+        <activity
+            android:name="com.sakura.aura.unity.AuraUnityActivity"
+            android:exported="false"
+            android:process=":unityplayer"
+            android:theme="@style/UnityThemeSelector"
+            android:screenOrientation="fullSensor"
+            android:launchMode="singleTask"
+            android:configChanges="mcc|mnc|locale|touchscreen|keyboard|keyboardHidden|navigation|orientation|screenLayout|uiMode|screenSize|smallestScreenSize|fontScale|layoutDirection|density"
+            android:resizeableActivity="false"
+            android:hardwareAccelerated="false">
+            <meta-data android:name="unityplayer.UnityActivity" android:value="true" />
         </activity>
     </application>
 

@@ -2,6 +2,7 @@ package com.sakura.aura.ui.home
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -18,6 +19,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -26,6 +28,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.sakura.aura.navigation.SakuraBottomNavBar
 import com.sakura.aura.ui.components.SakuraBackground
+import com.sakura.aura.unity.AuraUnityActivity
 import com.sakura.aura.ui.theme.LocalThemeViewModel
 import com.sakura.aura.ui.theme.SakuraPink
 import kotlin.math.cos
@@ -48,6 +51,8 @@ fun HomeScreen(navController: NavController) {
     // ── ViewModel real con SignalR ─────────────────────────────────────────
     val homeViewModel: HomeViewModel = hiltViewModel()
     val uiState by homeViewModel.uiState.collectAsState()
+
+    val context = LocalContext.current
 
     // Conectar al Hub cuando entra a la pantalla
     LaunchedEffect(Unit) {
@@ -144,6 +149,11 @@ fun HomeScreen(navController: NavController) {
                         textSub   = textSub,
                         modifier  = Modifier.fillMaxWidth().weight(1f)
                     )
+                    Spacer(Modifier.height(12.dp))
+                    Ver3DButton(
+                        auraColor = Color(result.auraColor.hex),
+                        onClick   = { AuraUnityActivity.launch(context, result.auraColor) }
+                    )
                 } else {
                     AuraCanvas(
                         animTime     = animTime,
@@ -189,6 +199,21 @@ fun HomeScreen(navController: NavController) {
                 Spacer(Modifier.height(16.dp))
             }
         }
+    }
+}
+
+@Composable
+private fun Ver3DButton(auraColor: Color, onClick: () -> Unit) {
+    OutlinedButton(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth().height(48.dp),
+        shape = RoundedCornerShape(50.dp),
+        border = BorderStroke(1.5.dp, auraColor),
+        colors = ButtonDefaults.outlinedButtonColors(contentColor = auraColor)
+    ) {
+        Icon(Icons.Outlined.AutoAwesome, null, Modifier.size(18.dp))
+        Spacer(Modifier.width(10.dp))
+        Text("Ver mi aura en 3D", fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
     }
 }
 

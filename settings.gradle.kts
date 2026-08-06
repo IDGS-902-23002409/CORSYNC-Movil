@@ -21,9 +21,11 @@ dependencyResolutionManagement {
         mavenCentral()
         // Repositorio para Paho MQTT
         maven { url = uri("https://repo.eclipse.org/content/repositories/paho-releases/") }
+        flatDir { dirs("${rootProject.projectDir}/unityLibrary/libs") }
     }
 }
 
 rootProject.name = "Sakura"
 include(":app")
+include(":unityLibrary")
  

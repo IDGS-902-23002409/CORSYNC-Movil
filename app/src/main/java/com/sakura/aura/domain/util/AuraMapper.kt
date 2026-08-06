@@ -1,18 +1,23 @@
 package com.sakura.aura.domain.util
 
 import androidx.compose.ui.graphics.Color
+import com.sakura.aura.domain.model.Aura
 
 object AuraMapper {
 
-    fun auraColorFromString(color: String): Color = when (color.lowercase()) {
-        "rojo", "roja" -> Color(0xFFE74C3C)
-        "naranja" -> Color(0xFFE67E22)
-        "amarillo", "amarilla" -> Color(0xFFF1C40F)
-        "verde" -> Color(0xFF2ECC71)
-        "azul" -> Color(0xFF5DADE2)
-        "morado", "violeta", "morada" -> Color(0xFF9B59B6)
-        "rosa" -> Color(0xFFE91E8C)
-        else -> Color(0xFFCCCCCC)
+    /**
+     * La normalización del string vive en [Aura.fromBackend] para que Home,
+     * Historial y Analytics no puedan divergir en qué cuenta como "Rojo".
+     */
+    fun auraColorFromString(color: String): Color = when (Aura.fromBackend(color)) {
+        Aura.ROJO        -> Color(0xFFE74C3C)
+        Aura.NARANJA     -> Color(0xFFE67E22)
+        Aura.AMARILLO    -> Color(0xFFF1C40F)
+        Aura.VERDE       -> Color(0xFF2ECC71)
+        Aura.AZUL        -> Color(0xFF5DADE2)
+        Aura.MORADO      -> Color(0xFF9B59B6)
+        Aura.ROSA        -> Color(0xFFE91E8C)
+        Aura.DESCONOCIDA -> Color(0xFFCCCCCC)
     }
 
     fun stressColor(level: Double): Color = when {

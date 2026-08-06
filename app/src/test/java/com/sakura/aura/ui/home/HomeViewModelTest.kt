@@ -7,6 +7,7 @@ import io.mockk.*
 import io.mockk.junit4.MockKRule
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.*
 import org.junit.*
@@ -24,6 +25,7 @@ class HomeViewModelTest {
 
     private val _isConnected = MutableStateFlow(false)
     private val _telemetry = MutableStateFlow<Telemetry?>(null)
+    private val _telemetryStream = MutableSharedFlow<Telemetry>(extraBufferCapacity = 64)
     private val _error = MutableStateFlow<String?>(null)
 
     @Before
@@ -32,6 +34,7 @@ class HomeViewModelTest {
 
         every { scanAuraUseCase.isConnected } returns _isConnected
         every { scanAuraUseCase.telemetry } returns _telemetry
+        every { scanAuraUseCase.telemetryStream } returns _telemetryStream
         every { scanAuraUseCase.error } returns _error
 
         viewModel = HomeViewModel(scanAuraUseCase, saveReadingUseCase)
@@ -92,20 +95,37 @@ class HomeViewModelTest {
         assertNull(viewModel.uiState.value.error)
     }
 
+    /**
+     * Vocabulario exacto del contrato (integration.md §4). Este es el caso que
+     * fallaba: "Rojo", "Morado" y "Amarillo" caían en NEUTRAL y se pintaban gris.
+     */
     @Test
-    fun `AuraColorUi fromString maps correctly`() {
-        assertEquals(AuraColorUi.ROJA, AuraColorUi.fromString("Roja"))
-        assertEquals(AuraColorUi.AZUL, AuraColorUi.fromString("Azul"))
-        assertEquals(AuraColorUi.VERDE, AuraColorUi.fromString("Verde"))
-        assertEquals(AuraColorUi.VIOLETA, AuraColorUi.fromString("Violeta"))
+    fun `AuraColorUi mapea el vocabulario del backend`() {
+        assertEquals(AuraColorUi.ROJA, AuraColorUi.fromString("Rojo"))
         assertEquals(AuraColorUi.NARANJA, AuraColorUi.fromString("Naranja"))
+        assertEquals(AuraColorUi.AMARILLA, AuraColorUi.fromString("Amarillo"))
+        assertEquals(AuraColorUi.VERDE, AuraColorUi.fromString("Verde"))
+        assertEquals(AuraColorUi.AZUL, AuraColorUi.fromString("Azul"))
+        assertEquals(AuraColorUi.VIOLETA, AuraColorUi.fromString("Morado"))
+    }
+
+    @Test
+    fun `AuraColorUi acepta la forma femenina que ya usaba la UI`() {
+        assertEquals(AuraColorUi.ROJA, AuraColorUi.fromString("Roja"))
+        assertEquals(AuraColorUi.AMARILLA, AuraColorUi.fromString("Amarilla"))
+        assertEquals(AuraColorUi.VIOLETA, AuraColorUi.fromString("Violeta"))
         assertEquals(AuraColorUi.ROSA, AuraColorUi.fromString("Rosa"))
+    }
+
+    @Test
+    fun `AuraColorUi normaliza espacios y mayusculas`() {
+        assertEquals(AuraColorUi.ROJA, AuraColorUi.fromString("  ROJO  "))
+        assertEquals(AuraColorUi.VIOLETA, AuraColorUi.fromString("morado"))
     }
 
     @Test
     fun `AuraColorUi fromString unknown returns NEUTRAL`() {
         assertEquals(AuraColorUi.NEUTRAL, AuraColorUi.fromString("Desconocido"))
         assertEquals(AuraColorUi.NEUTRAL, AuraColorUi.fromString(""))
-        assertEquals(AuraColorUi.NEUTRAL, AuraColorUi.fromString("Morado"))
     }
 }

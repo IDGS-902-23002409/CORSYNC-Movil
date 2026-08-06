@@ -1,0 +1,152 @@
+apply plugin: 'com.android.library'
+
+
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+    implementation(name: 'arcore_client', ext:'aar')
+    implementation(name: 'ARPresto', ext:'aar')
+    implementation(name: 'UnityARCore', ext:'aar')
+    implementation(name: 'unityandroidpermissions', ext:'aar')
+
+}
+
+android {
+    namespace 'com.unity3d.player'
+    compileSdkVersion 33
+
+    // Unity 2021.3 compila IL2CPP contra la serie r21 y solo contra esa: los NDK
+    // r23+ movieron el toolchain de sitio y el Bee de este export no lo encuentra.
+    // Sin esta línea `android.ndkDirectory` (que usa BuildIl2Cpp más abajo) queda
+    // vacío y il2cpp.exe aborta con "NDK not configured".
+    //
+    // Es 21.3.6528147 y no el 21.4.7075529 que cita la documentación porque AGP
+    // empareja por Pkg.Revision exacto y el zip de Google rotulado r21d trae esa
+    // revisión. Solo cambia el parche; il2cpp recibe la ruta del toolchain y no
+    // valida la versión.
+    ndkVersion '21.3.6528147'
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    defaultConfig {
+        minSdkVersion 27
+        ndk {
+            // Solo arm64-v8a: es la arquitectura del dispositivo de pruebas
+            // (Razr 50) y cada ABI extra es una pasada completa de IL2CPP sobre
+            // ~269 MB de C++ generado. Para volver a emulador x86_64 hay que
+            // añadir el ABI aquí y su llamada en BuildIl2CppTask.
+            abiFilters 'arm64-v8a'
+        }
+        consumerProguardFiles 'proguard-unity.txt'
+    }
+
+
+}
+
+def getSdkDir() {
+    Properties local = new Properties()
+    local.load(new FileInputStream("${rootDir}/local.properties"))
+    return local.getProperty('sdk.dir')
+}
+
+def BuildIl2Cpp(String workingDir, String configuration, String architecture, String abi, String[] staticLibraries) {
+    def commandLineArgs = []
+    commandLineArgs.add("--compile-cpp")
+    commandLineArgs.add("--platform=Android")
+    commandLineArgs.add("--architecture=" + architecture)
+    commandLineArgs.add("--outputpath=" + workingDir + "/src/main/jniLibs/" + abi + "/libil2cpp.so")
+    commandLineArgs.add("--libil2cpp-static")
+    commandLineArgs.add("--baselib-directory=" + workingDir + "/src/main/jniStaticLibs/" + abi)
+    commandLineArgs.add("--incremental-g-c-time-slice=3")
+    commandLineArgs.add("--configuration=" + configuration)
+    commandLineArgs.add("--dotnetprofile=unityaot-linux")
+    commandLineArgs.add("--profiler-report")
+    commandLineArgs.add("--profiler-output-file=" + workingDir + "/build/il2cpp_"+ abi + "_" + configuration + "/il2cpp_conv.traceevents")
+    commandLineArgs.add("--print-command-line")
+    commandLineArgs.add("--generatedcppdir=" + workingDir + "/src/main/Il2CppOutputProject/Source/il2cppOutput")
+    commandLineArgs.add("--cachedirectory=" + workingDir + "/build/il2cpp_"+ abi + "_" + configuration + "/il2cpp_cache")
+    commandLineArgs.add("--tool-chain-path=" + android.ndkDirectory)
+    staticLibraries.eachWithIndex {fileName, i->
+        commandLineArgs.add("--additional-libraries=" + workingDir + "/src/main/jniStaticLibs/" + abi + "/" + fileName)
+    }
+    def executableExtension = ""
+    if (org.gradle.internal.os.OperatingSystem.current().isWindows())
+        executableExtension = ".exe"
+    // El export usaba `exec {}` y `ant.move`, y Gradle 9 eliminó Project.exec().
+    // ProcessBuilder + inheritIO no depende de la API de Gradle y además deja ver
+    // el avance de il2cpp en vivo, que con una compilación de decenas de minutos
+    // sobre ~269 MB de C++ importa bastante.
+    def il2cppExe = workingDir + "/src/main/Il2CppOutputProject/IL2CPP/build/deploy/il2cpp" + executableExtension
+    def pb = new ProcessBuilder([il2cppExe] + commandLineArgs)
+    pb.environment().put("ANDROID_SDK_ROOT", getSdkDir())
+    pb.inheritIO()
+    println "[il2cpp] compilando ${abi} ..."
+    def exitCode = pb.start().waitFor()
+    if (exitCode != 0) {
+        throw new GradleException("il2cpp falló para ${abi} con código ${exitCode}")
+    }
+
+    new File(workingDir + "/src/main/jniLibs/" + abi + "/libil2cpp.sym.so").delete()
+    def dbg = new File(workingDir + "/src/main/jniLibs/" + abi + "/libil2cpp.dbg.so")
+    if (dbg.exists()) {
+        def symDir = new File(workingDir + "/symbols/" + abi)
+        symDir.mkdirs()
+        def symTarget = new File(symDir, "libil2cpp.so")
+        symTarget.delete()
+        dbg.renameTo(symTarget)
+    }
+}
+
+android {
+    packagingOptions {
+        jniLibs {
+            keepDebugSymbols += ['*/arm64-v8a/*.so', '*/x86_64/*.so']
+        }
+    }
+    sourceSets {
+        main {
+            jni.srcDirs = ["src/main/Il2CppOutputProject"]
+        }
+    }
+    androidResources {
+        ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
+        noCompress '[\'.unity3d\', \'.ress\', \'.resource\', \'.obb\', \'.bundle\', \'.unityexp\'] + unityStreamingAssets.tokenize(\', \')'
+    }
+    lint {
+        abortOnError false
+        targetSdk 33
+    }
+    testOptions {
+        targetSdk 33
+    }
+}
+
+// Esta tarea venía declarada DENTRO del bloque `android {}` en el export de Unity.
+// Con Gradle 9 la resolución de scope del closure ya no alcanza desde ahí las
+// funciones del script, y `doLast` reventaba con "Could not find method
+// BuildIl2Cpp()". Declarada a nivel de script, el owner del closure es el script
+// y la función se resuelve normal.
+task BuildIl2CppTask {
+    // La tarea no declara inputs/outputs, así que Gradle la considera siempre
+    // desactualizada y relanzaría il2cpp.exe en cada build. Una vez que el .so
+    // existe se salta; para forzarla: gradlew :app:assembleDebug -PforceIl2Cpp
+    onlyIf {
+        project.hasProperty('forceIl2Cpp') ||
+            !file("${projectDir}/src/main/jniLibs/arm64-v8a/libil2cpp.so").exists()
+    }
+    doLast {
+        BuildIl2Cpp(projectDir.toString().replaceAll('\\\\', '/'), 'Release', 'arm64', 'arm64-v8a', [  ] as String[]);
+    }
+}
+
+afterEvaluate {
+    if (tasks.findByName('mergeDebugJniLibFolders'))
+        tasks.named('mergeDebugJniLibFolders').configure { dependsOn BuildIl2CppTask }
+    if (tasks.findByName('mergeReleaseJniLibFolders'))
+        tasks.named('mergeReleaseJniLibFolders').configure { dependsOn BuildIl2CppTask }
+}
+
+
+
